@@ -20,19 +20,22 @@
       color: #ffffff;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: 10px;
+      gap: 8px;
     }
 
     /* Formato Vertical 9:16 Otimizado para TikTok Live e OBS */
     #liveContainer {
       position: relative;
       width: 100vw;
-      height: 100vh;
-      max-width: 450px;
-      max-height: 800px;
+      height: min(780px, calc(100vh - 75px));
+      max-width: 440px;
       aspect-ratio: 9 / 16;
       background: #090d16;
       box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.85);
@@ -41,6 +44,7 @@
       display: flex;
       flex-direction: column;
       border: 4px solid #1e293b;
+      flex-shrink: 0;
     }
 
     #gameCanvas {
@@ -288,38 +292,63 @@
       margin-right: 4px;
     }
 
-    .streamer-controls {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      pointer-events: auto;
-      z-index: 50;
+    /* Painel do Streamer / Dev (Posicionado na parte inferior, fora da área de transmissão) */
+    .streamer-bottom-dock {
+      width: 100%;
+      max-width: 450px;
+      background: rgba(11, 15, 25, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 8px 12px;
       display: flex;
-      flex-direction: column;
-      gap: 4px;
-      align-items: flex-end;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+      z-index: 10;
     }
 
-    .btn-tool {
-      background: rgba(17, 24, 39, 0.9);
-      border: 1px solid rgba(255, 255, 255, 0.25);
+    .btn-dock {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       color: #fff;
       font-size: 10px;
       font-weight: 700;
-      padding: 4px 8px;
-      border-radius: 6px;
+      padding: 5px 10px;
+      border-radius: 7px;
       cursor: pointer;
-      backdrop-filter: blur(4px);
+      transition: all 0.2s;
     }
 
-    .btn-action {
-      font-size: 9px;
+    .btn-dock:hover {
+      background: rgba(51, 65, 85, 1);
+    }
+
+    .btn-dock-action {
+      font-size: 10px;
       font-weight: 800;
-      padding: 3px 6px;
-      border-radius: 5px;
+      padding: 5px 9px;
+      border-radius: 7px;
       border: none;
       cursor: pointer;
       color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      transition: transform 0.1s;
+    }
+
+    .btn-dock-action:active {
+      transform: scale(0.95);
+    }
+
+    .dock-divider {
+      width: 1px;
+      height: 18px;
+      background: rgba(255, 255, 255, 0.15);
+      margin: 0 2px;
     }
 
     /* PÓDIO DA RODADA (10 SEGUNDOS OVERLAY) */
@@ -421,23 +450,6 @@
       </div>
     </div>
 
-    <!-- Controles Rápidos -->
-    <div class="streamer-controls">
-      <div style="display: flex; gap: 4px;">
-        <button id="btnAudioToggle" class="btn-tool">🔊 Som: ON</button>
-      </div>
-
-      <div style="display: flex; gap: 3px; margin-top: 4px;">
-        <button class="btn-action" style="background:#f97316;" onclick="triggerAction('TURBO')">🔥</button>
-        <button class="btn-action" style="background:#06b6d4;" onclick="triggerAction('NITRO')">⚡</button>
-        <button class="btn-action" style="background:#64748b;" onclick="triggerAction('OLEO')">🛢️</button>
-        <button class="btn-action" style="background:#ef4444;" onclick="triggerAction('MISSEL')">🚀</button>
-        <button class="btn-action" style="background:#8b5cf6;" onclick="triggerAction('ESCUDO')">🛡️</button>
-        <button class="btn-action" style="background:#10b981;" onclick="addRandomCar()">+ Piloto</button>
-        <button class="btn-action" style="background:#374151;" onclick="resetRace()">↺</button>
-      </div>
-    </div>
-
     <!-- PÓDIO DA RODADA (10 SEGUNDOS) -->
     <div id="victoryModal">
       <div style="font-size: 40px; margin-bottom: 4px;">🏆</div>
@@ -476,6 +488,20 @@
         Reiniciar Agora
       </button>
     </div>
+  </div>
+
+  <!-- Painel Inferior do Streamer / Dev (Fora da tela de transmissão, topo 100% limpo) -->
+  <div class="streamer-bottom-dock">
+    <button id="btnAudioToggle" class="btn-dock">🔊 Som: ON</button>
+    <div class="dock-divider"></div>
+    <button class="btn-dock-action" style="background:#f97316;" onclick="triggerAction('TURBO')">🔥 Turbo</button>
+    <button class="btn-dock-action" style="background:#06b6d4;" onclick="triggerAction('NITRO')">⚡ Nitro</button>
+    <button class="btn-dock-action" style="background:#64748b;" onclick="triggerAction('OLEO')">🛢️ Óleo</button>
+    <button class="btn-dock-action" style="background:#ef4444;" onclick="triggerAction('MISSEL')">🚀 Míssil</button>
+    <button class="btn-dock-action" style="background:#8b5cf6;" onclick="triggerAction('ESCUDO')">🛡️ Escudo</button>
+    <div class="dock-divider"></div>
+    <button class="btn-dock" onclick="addRandomCar()">+ Piloto</button>
+    <button class="btn-dock" onclick="resetRace()">↺ Reset</button>
   </div>
 
   <script>

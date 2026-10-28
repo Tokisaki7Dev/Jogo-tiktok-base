@@ -387,11 +387,6 @@ export default function App() {
         {/* Left/Center: Vertical Phone Container (9:16 aspect ratio) */}
         <div className="w-full flex justify-center shrink-0 lg:w-auto">
           <div className="relative w-full max-w-[420px] h-[740px] rounded-[36px] bg-slate-950 p-2.5 shadow-[0_0_50px_rgba(0,0,0,0.8)] border-[6px] border-slate-800 flex flex-col overflow-hidden">
-            {/* Phone Notch/Island */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-4 bg-slate-900 rounded-full z-30 flex items-center justify-center">
-              <div className="w-2.5 h-2.5 rounded-full bg-slate-950 border border-slate-800" />
-            </div>
-
             {/* Live Racing Game Screen */}
             <div className="relative w-full h-full rounded-[24px] overflow-hidden bg-[#070a12]">
               <RaceCanvas
