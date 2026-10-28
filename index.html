@@ -1,18 +1,1511 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Racha de Carros TikTok Live</title>
-    <meta name="description" content="Jogo de Racha de Carros 2D vertical em HTML5 Canvas otimizado para transmissões TikTok Live com eventos em tempo real, suporte para 10 carros e integração Socket.io." />
-    <meta property="og:title" content="Racha de Carros TikTok Live" />
-    <meta property="og:description" content="Jogo de Racha de Carros 2D vertical em HTML5 Canvas otimizado para transmissões TikTok Live com eventos em tempo real, suporte para 10 carros e integração Socket.io." />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Racha de Carros 2D HD - TikTok Live @Tokisaki7_</title>
+  
+  <!-- PWA & Otimização Mobile iOS / TikTok Live -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Racha 2D Live" />
+  <meta name="theme-color" content="#060913" />
+  <meta name="description" content="Jogo de Racha de Carros 2D HD em HTML5 Canvas otimizado para TikTok Live @Tokisaki7_, integrado ao Render e Vercel." />
 
+  <!-- Socket.io CDN Oficial para conexão com Render -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: #04060d;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Container Principal 100vh / 100vw otimizado para iPhone, OBS e Vercel */
+    #gameContainer {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      max-width: 480px;
+      background: #060913;
+      box-shadow: 0 0 60px rgba(0, 0, 0, 0.95);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Canvas 2D Retina Display */
+    #raceCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 1;
+      background: #080c18;
+    }
+
+    /* Overlays do HUD */
+    #hudOverlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: env(safe-area-inset-top, 10px) env(safe-area-inset-right, 10px) env(safe-area-inset-bottom, 10px) env(safe-area-inset-left, 10px);
+    }
+
+    .top-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+    }
+
+    /* Barra Superior com Badge de Live e Conexão */
+    .top-status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 2px 4px;
+    }
+
+    .live-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(238, 29, 82, 0.2);
+      border: 1px solid rgba(238, 29, 82, 0.5);
+      color: #ff3b5c;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 10.5px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      text-shadow: 0 0 8px rgba(238, 29, 82, 0.5);
+    }
+
+    .live-tag-dot {
+      width: 7px;
+      height: 7px;
+      background: #ff3b5c;
+      border-radius: 50%;
+      animation: pulseDot 1.2s infinite alternate;
+    }
+
+    @keyframes pulseDot {
+      0% { opacity: 0.4; transform: scale(0.85); }
+      100% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 8px #ff3b5c; }
+    }
+
+    .conn-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(10, 16, 32, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+    .status-online {
+      background: #00ffcc;
+      box-shadow: 0 0 8px #00ffcc;
+    }
+    .status-offline {
+      background: #ff3b5c;
+      box-shadow: 0 0 8px #ff3b5c;
+      animation: pulseDot 1s infinite alternate;
+    }
+
+    /* BANNER GLASSMORPHISM NEON */
+    .glass-banner {
+      background: rgba(8, 14, 28, 0.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1.5px solid #00ffcc;
+      border-radius: 14px;
+      padding: 8px 10px;
+      box-shadow: 0 0 25px rgba(0, 255, 204, 0.3), inset 0 0 15px rgba(0, 255, 204, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .banner-title {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.6px;
+      color: #ffffff;
+      text-transform: uppercase;
+      text-shadow: 0 0 10px rgba(0, 255, 204, 0.9);
+      background: linear-gradient(90deg, #ffffff, #00ffcc, #ffffff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: neonPulse 2.5s infinite alternate ease-in-out;
+    }
+
+    @keyframes neonPulse {
+      0% { filter: drop-shadow(0 0 4px rgba(0, 255, 204, 0.5)); }
+      100% { filter: drop-shadow(0 0 12px rgba(0, 255, 204, 0.95)); }
+    }
+
+    /* Grid de Moedas Rebalanceado */
+    .coins-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+    }
+
+    .coin-badge {
+      background: rgba(14, 23, 44, 0.9);
+      border: 1px solid rgba(0, 255, 204, 0.35);
+      border-radius: 8px;
+      padding: 4px 5px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .coin-badge .name {
+      font-size: 10px;
+      font-weight: 900;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .coin-badge .cost {
+      font-size: 8.5px;
+      font-weight: 800;
+      color: #00ffcc;
+      margin-top: 1px;
+      text-shadow: 0 0 5px rgba(0, 255, 204, 0.6);
+    }
+
+    /* Barra de Progresso e Temporizador 90s */
+    .race-status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(8, 14, 28, 0.82);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 6px 10px;
+      font-size: 11px;
+    }
+
+    .timer-display {
+      font-family: monospace;
+      font-size: 14px;
+      font-weight: 900;
+      color: #00ffcc;
+      text-shadow: 0 0 8px rgba(0, 255, 204, 0.8);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .timer-display.urgent {
+      color: #ff3b5c;
+      text-shadow: 0 0 10px rgba(255, 59, 92, 0.9);
+      animation: urgentBlink 0.6s infinite alternate;
+    }
+
+    @keyframes urgentBlink {
+      0% { opacity: 0.6; }
+      100% { opacity: 1; transform: scale(1.05); }
+    }
+
+    .race-progress-wrapper {
+      flex: 1;
+      max-width: 140px;
+      margin: 0 10px;
+      background: rgba(0, 0, 0, 0.5);
+      height: 6px;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .race-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00ffcc, #38bdf8);
+      box-shadow: 0 0 8px #00ffcc;
+      width: 100%;
+      transition: width 0.3s linear;
+    }
+
+    /* Leaderboard Top 5 ao Vivo */
+    .leaderboard-panel {
+      background: rgba(8, 14, 28, 0.82);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(0, 255, 204, 0.25);
+      border-radius: 12px;
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .leaderboard-header {
+      font-size: 9.5px;
+      font-weight: 900;
+      color: #00ffcc;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2px;
+    }
+
+    .leader-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 2.5px 6px;
+      border-radius: 6px;
+      font-size: 10.5px;
+      background: rgba(255, 255, 255, 0.04);
+      border-left: 3px solid #00ffcc;
+    }
+
+    .leader-row.pos-1 { border-left-color: #ffd700; background: rgba(255, 215, 0, 0.12); }
+    .leader-row.pos-2 { border-left-color: #e2e8f0; }
+    .leader-row.pos-3 { border-left-color: #cd7f32; }
+
+    .leader-name {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 68%;
+      font-weight: 700;
+    }
+
+    .leader-dist {
+      font-family: monospace;
+      font-weight: 800;
+      color: #00ffcc;
+      font-size: 10px;
+    }
+
+    /* Notificações Flutuantes (Toasts) */
+    .toast-container {
+      position: absolute;
+      bottom: 20px;
+      left: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      pointer-events: none;
+      z-index: 25;
+    }
+
+    .toast-item {
+      background: rgba(10, 16, 32, 0.92);
+      border: 1px solid #00ffcc;
+      box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
+      backdrop-filter: blur(8px);
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 10.5px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      animation: slideIn 0.25s ease-out;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(-30px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Modal do Pódio da Rodada (10s) */
+    .podium-modal {
+      position: absolute;
+      inset: 0;
+      background: rgba(4, 7, 16, 0.94);
+      backdrop-filter: blur(14px);
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+      padding: 16px;
+    }
+
+    .podium-modal.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .podium-box {
+      background: rgba(12, 18, 36, 0.95);
+      border: 2px solid #00ffcc;
+      border-radius: 18px;
+      padding: 20px 16px;
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+      box-shadow: 0 0 45px rgba(0, 255, 204, 0.45);
+    }
+
+    .podium-heading {
+      font-size: 19px;
+      font-weight: 900;
+      color: #ffd700;
+      text-shadow: 0 0 15px rgba(255, 215, 0, 0.85);
+      margin-bottom: 16px;
+      letter-spacing: 0.8px;
+    }
+
+    .podium-pillars {
+      display: flex;
+      justify-content: space-around;
+      align-items: flex-end;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .podium-pillar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      padding: 10px 4px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .podium-pillar.first {
+      background: linear-gradient(180deg, rgba(255, 215, 0, 0.25), rgba(255, 215, 0, 0.05));
+      border-color: #ffd700;
+      transform: scale(1.08);
+      order: 2;
+    }
+    .podium-pillar.second { order: 1; }
+    .podium-pillar.third { order: 3; }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <!-- Canvas 2D Retina Otimizado 60 FPS -->
+    <canvas id="raceCanvas"></canvas>
+
+    <!-- Overlay do HUD -->
+    <div id="hudOverlay">
+      <div class="top-section">
+        <!-- Status Superior -->
+        <div class="top-status-bar">
+          <div class="live-tag">
+            <span class="live-tag-dot"></span> LIVE TIKTOK @Tokisaki7_
+          </div>
+          <div class="conn-tag">
+            <span class="status-dot status-offline" id="statusDot"></span>
+            <span id="statusText">Conectando...</span>
+          </div>
+        </div>
+
+        <!-- 1. BANNER VISUAL CUSTOMIZADO: GLASSMORPHISM + NEON -->
+        <div class="glass-banner">
+          <div class="banner-title">
+            💬 COMENTE PRA ENTRAR • 🟢 CURTA PRA EMPURRAR
+          </div>
+
+          <!-- Painel de Ações por Moedas -->
+          <div class="coins-grid">
+            <div class="coin-badge">
+              <span class="name">⚡ TURBO</span>
+              <span class="cost">1 Moeda</span>
+            </div>
+            <div class="coin-badge">
+              <span class="name">🔥 NITRO</span>
+              <span class="cost">5 Moedas</span>
+            </div>
+            <div class="coin-badge">
+              <span class="name">💧 ÓLEO</span>
+              <span class="cost">10 Moedas</span>
+            </div>
+            <div class="coin-badge">
+              <span class="name">🚀 MÍSSIL</span>
+              <span class="cost">25 Moedas</span>
+            </div>
+            <div class="coin-badge">
+              <span class="name">🛡️ ESCUDO</span>
+              <span class="cost">50 Moedas</span>
+            </div>
+            <div class="coin-badge">
+              <span class="name">💣 BOMBA</span>
+              <span class="cost">100 Moedas</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Temporizador 90s + Barra de Progresso + Contagem de Carros -->
+        <div class="race-status-bar">
+          <div class="timer-display" id="timerDisplay">
+            <span>⏱️</span> <span id="timerText">01:30</span>
+          </div>
+          <div class="race-progress-wrapper">
+            <div class="race-progress-fill" id="progressFill"></div>
+          </div>
+          <div style="font-size: 10px; font-weight: 800; color: #94a3b8;" id="carsCountLabel">
+            0/20 Carros
+          </div>
+        </div>
+
+        <!-- Tabela de Classificação Top 5 -->
+        <div class="leaderboard-panel">
+          <div class="leaderboard-header">
+            <span>🏆 CLASSIFICAÇÃO AO VIVO</span>
+            <span style="font-size: 8px; color: #94a3b8;">TOP 5</span>
+          </div>
+          <div id="leaderList" style="display: flex; flex-direction: column; gap: 2.5px;"></div>
+        </div>
+      </div>
+
+      <!-- Toasts de Notificações -->
+      <div class="toast-container" id="toastContainer"></div>
+    </div>
+
+    <!-- Modal do Pódio -->
+    <div class="podium-modal" id="podiumModal">
+      <div class="podium-box">
+        <div class="podium-heading">🏆 PÓDIO DA RODADA 🏆</div>
+        <div class="podium-pillars">
+          <div class="podium-pillar second">
+            <div style="font-size: 16px;">🥈</div>
+            <div style="font-weight: 800; font-size: 11px; margin: 3px 0;" id="podium2">@piloto2</div>
+            <div style="font-size: 9.5px; color: #00ffcc;" id="podium2Dist">0m</div>
+          </div>
+          <div class="podium-pillar first">
+            <div style="font-size: 22px;">🥇</div>
+            <div style="font-weight: 900; font-size: 12.5px; margin: 3px 0; color: #ffd700;" id="podium1">@campeao</div>
+            <div style="font-size: 10.5px; font-weight: 800; color: #00ffcc;" id="podium1Dist">0m</div>
+          </div>
+          <div class="podium-pillar third">
+            <div style="font-size: 16px;">🥉</div>
+            <div style="font-weight: 800; font-size: 11px; margin: 3px 0;" id="podium3">@piloto3</div>
+            <div style="font-size: 9.5px; color: #00ffcc;" id="podium3Dist">0m</div>
+          </div>
+        </div>
+        <div style="font-size: 11px; font-weight: 700; color: #94a3b8;">
+          Reiniciando em <span id="podiumCountdown" style="color: #00ffcc; font-weight: 900;">10</span>s...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       RACHA DE CARROS 2D HD (HTML5 CANVAS) - TIKTOK LIVE (@Tokisaki7_)
+       Resolução Retina, Iluminação Dinâmica, Anti-Sobreposição e Zero Bugs
+       ========================================================================== */
+
+    // 1. CONFIGURAÇÕES & CONSTANTES
+    const MAX_CARS = 20;               // Limite de carros com política FIFO
+    const RACE_DURATION = 90;          // Duração da corrida em segundos
+    const SOCKET_URL = 'https://tiktok-live-backend-39v9.onrender.com';
+    const WS_URL = 'wss://tiktok-live-backend-39v9.onrender.com';
+    const LANE_COUNT = 6;              // 6 faixas na pista
+
+    const CAR_PALETTE = [
+      '#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6',
+      '#ec4899', '#06b6d4', '#eab308', '#14b8a6', '#f97316',
+      '#a855f7', '#6366f1', '#22c55e', '#38bdf8', '#d946ef'
+    ];
+
+    const INITIAL_DRIVERS = [
+      '@Tokisaki7_', '@drift_king', '@speed_queen', '@turbo_pilot',
+      '@cyber_racer', '@nitro_boost', '@v8_power', '@vtec_fire'
+    ];
+
+    // Estados da corrida
+    let timeLeft = RACE_DURATION;
+    let isFrozen = false;
+    let trackScrollY = 0;
+    let cars = [];
+    let particles = [];
+    let skidMarks = [];
+    let missiles = [];
+    let floatingTexts = [];
+    let speedLines = [];
+    let podiumInterval = null;
+
+    // ==========================================================================
+    // 2. SISTEMA DE ÁUDIO SINTETIZADO (Web Audio API - Zero Assets Externos)
+    // ==========================================================================
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx && AudioContextClass) {
+        audioCtx = new AudioContextClass();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+    window.addEventListener('click', initAudio, { once: true });
+    window.addEventListener('touchstart', initAudio, { once: true });
+
+    function playSound(type) {
+      if (!audioCtx) return;
+      try {
+        const t = audioCtx.currentTime;
+        if (type === 'turbo') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(140, t);
+          osc.frequency.exponentialRampToValueAtTime(750, t + 0.35);
+          gain.gain.setValueAtTime(0.18, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+          osc.connect(gain); gain.connect(audioCtx.destination);
+          osc.start(t); osc.stop(t + 0.4);
+        } else if (type === 'nitro') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(200, t);
+          osc.frequency.linearRampToValueAtTime(950, t + 0.6);
+          gain.gain.setValueAtTime(0.16, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.65);
+          osc.connect(gain); gain.connect(audioCtx.destination);
+          osc.start(t); osc.stop(t + 0.65);
+        } else if (type === 'oil') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(450, t);
+          osc.frequency.exponentialRampToValueAtTime(80, t + 0.45);
+          gain.gain.setValueAtTime(0.15, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+          osc.connect(gain); gain.connect(audioCtx.destination);
+          osc.start(t); osc.stop(t + 0.5);
+        } else if (type === 'missile') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, t);
+          osc.frequency.exponentialRampToValueAtTime(1200, t + 0.5);
+          gain.gain.setValueAtTime(0.14, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+          osc.connect(gain); gain.connect(audioCtx.destination);
+          osc.start(t); osc.stop(t + 0.55);
+        } else if (type === 'bomb') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(90, t);
+          osc.frequency.exponentialRampToValueAtTime(25, t + 0.6);
+          gain.gain.setValueAtTime(0.3, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+          osc.connect(gain); gain.connect(audioCtx.destination);
+          osc.start(t); osc.stop(t + 0.7);
+        } else if (type === 'shield') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(400, t);
+          osc.frequency.exponentialRampToValueAtTime(850, t + 0.3);
+          gain.gain.setValueAtTime(0.14, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+          osc.connect(gain); gain.connect(audioCtx.destination);
+          osc.start(t); osc.stop(t + 0.35);
+        } else if (type === 'like') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, t);
+          osc.frequency.setValueAtTime(659.25, t + 0.06);
+          gain.gain.setValueAtTime(0.12, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+          osc.connect(gain); gain.connect(audioCtx.destination);
+          osc.start(t); osc.stop(t + 0.16);
+        }
+      } catch (e) {}
+    }
+
+    // ==========================================================================
+    // 3. CANVAS 2D RETINA DISPLAY SETUP (Zero Blur / Alta Definição)
+    // ==========================================================================
+    const canvas = document.getElementById('raceCanvas');
+    const ctx = canvas.getContext('2d');
+    let dpr = window.devicePixelRatio || 1;
+    let cssWidth = 0;
+    let cssHeight = 0;
+
+    function resizeCanvas() {
+      const container = document.getElementById('gameContainer');
+      const rect = container.getBoundingClientRect();
+      cssWidth = rect.width;
+      cssHeight = rect.height;
+      dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+
+      canvas.width = cssWidth * dpr;
+      canvas.height = cssHeight * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // Recria linhas de velocidade
+      speedLines = [];
+      for (let i = 0; i < 35; i++) {
+        speedLines.push({
+          x: Math.random() * cssWidth,
+          y: Math.random() * cssHeight,
+          length: Math.random() * 60 + 30,
+          speed: Math.random() * 25 + 20,
+          alpha: Math.random() * 0.35 + 0.1
+        });
+      }
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // ==========================================================================
+    // 4. GERENCIAMENTO DE CARROS & FILA FIFO (MAX_CARS = 20)
+    // ==========================================================================
+    function addParticipant(username, colorHex = null) {
+      if (!username) return;
+      const cleanName = username.startsWith('@') ? username : `@${username}`;
+
+      const existing = cars.find(c => c.username.toLowerCase() === cleanName.toLowerCase());
+      if (existing) {
+        existing.speed = Math.min(existing.speed + 15, 380);
+        return existing;
+      }
+
+      // Fila FIFO: remove o mais antigo se atingir 20
+      if (cars.length >= MAX_CARS) {
+        cars.shift();
+      }
+
+      const carIndex = cars.length;
+      const color = colorHex || CAR_PALETTE[carIndex % CAR_PALETTE.length];
+      const lane = carIndex % LANE_COUNT;
+
+      const newCar = {
+        id: `c_${Date.now()}_${Math.random()}`,
+        username: cleanName,
+        color,
+        lane,
+        x: 0,
+        y: 0,
+        targetX: 0,
+        distance: 0,
+        speed: 175 + Math.random() * 20,
+        baseSpeed: 175 + Math.random() * 20,
+        rank: carIndex + 1,
+        turboTimer: 0,
+        nitroTimer: 0,
+        oilTimer: 0,
+        stunTimer: 0,
+        shieldTimer: 0,
+        spinAngle: 0,
+        driftAngle: 0,
+        badgeOffset: (carIndex % 3) * 16 // Anti-sobreposição de tags
+      };
+
+      cars.push(newCar);
+      updateCarsCountUI();
+      return newCar;
+    }
+
+    INITIAL_DRIVERS.forEach(driver => addParticipant(driver));
+
+    function updateCarsCountUI() {
+      const el = document.getElementById('carsCountLabel');
+      if (el) el.innerText = `${cars.length}/${MAX_CARS} Carros`;
+    }
+
+    // ==========================================================================
+    // 5. PROCESSAMENTO DE EVENTOS DA LIVE (LIKES & GIFTS COM COINS)
+    // ==========================================================================
+    function handleLikeEvent(username) {
+      if (isFrozen) return;
+      playSound('like');
+      const cleanName = username ? (username.startsWith('@') ? username : `@${username}`) : null;
+      let car = cleanName ? cars.find(c => c.username.toLowerCase() === cleanName.toLowerCase()) : null;
+      if (!car && cars.length > 0) {
+        car = addParticipant(cleanName || '@curtidor');
+      }
+
+      if (car) {
+        car.speed = Math.min(car.speed + 12, 380);
+        showToast('💚', `${car.username} curtiu e empurrou o carro!`);
+        floatingTexts.push({
+          x: car.x,
+          y: car.y - 30,
+          text: '💚 +BOOST!',
+          color: '#00ffcc',
+          alpha: 1,
+          vy: -35
+        });
+      }
+    }
+
+    function handleGiftEvent(username, totalCoins) {
+      if (isFrozen) return;
+      const cleanName = username ? (username.startsWith('@') ? username : `@${username}`) : '@espectador';
+      let car = cars.find(c => c.username.toLowerCase() === cleanName.toLowerCase());
+      if (!car) {
+        car = addParticipant(cleanName);
+      }
+
+      const coins = Number(totalCoins || 1);
+
+      if (coins >= 100) {
+        // 💣 BOMBA (100 Moedas)
+        applyBomb(car);
+      } else if (coins >= 50) {
+        // 🛡️ ESCUDO (50 Moedas)
+        applyShield(car);
+      } else if (coins >= 25) {
+        // 🚀 MÍSSIL (25 Moedas)
+        applyMissile(car);
+      } else if (coins >= 10) {
+        // 💧 ÓLEO (10 Moedas)
+        applyOil(car);
+      } else if (coins >= 5) {
+        // 🔥 NITRO (5 Moedas)
+        applyNitro(car);
+      } else if (coins >= 1) {
+        // ⚡ TURBO (1 Moeda)
+        applyTurbo(car);
+      }
+    }
+
+    function applyTurbo(car) {
+      car.turboTimer = 3.0;
+      playSound('turbo');
+      showToast('⚡', `${car.username} ativou TURBO! (1 Moeda)`);
+      floatingTexts.push({ x: car.x, y: car.y - 35, text: '⚡ TURBO!', color: '#ffd700', alpha: 1, vy: -30 });
+    }
+
+    function applyNitro(car) {
+      car.nitroTimer = 5.0; // 5 segundos
+      playSound('nitro');
+      showToast('🔥', `${car.username} ativou NITRO x2 por 5s! (5 Moedas)`);
+      floatingTexts.push({ x: car.x, y: car.y - 35, text: '🔥 NITRO x2!', color: '#00ffcc', alpha: 1, vy: -30 });
+    }
+
+    function applyOil(car) {
+      playSound('oil');
+      const aheadCars = cars.filter(c => c.distance > car.distance).sort((a, b) => a.distance - b.distance);
+      const target = aheadCars[0] || (cars.length > 1 ? cars[0] : car);
+
+      if (target.shieldTimer > 0) {
+        playSound('shield');
+        showToast('🛡️', `${target.username} defendeu o ÓLEO com ESCUDO!`);
+      } else {
+        target.oilTimer = 3.2;
+        showToast('💧', `${car.username} jogou ÓLEO em ${target.username}! (10 Moedas)`);
+        floatingTexts.push({ x: target.x, y: target.y - 35, text: '💧 DERRAPOU!', color: '#38bdf8', alpha: 1, vy: -30 });
+        skidMarks.push({ x: target.x, y: target.y, alpha: 1.0, length: 30 });
+      }
+    }
+
+    function applyMissile(car) {
+      playSound('missile');
+      const sorted = [...cars].sort((a, b) => b.distance - a.distance);
+      const leader = sorted[0] || car;
+
+      showToast('🚀', `${car.username} disparou MÍSSIL no líder ${leader.username}! (25 Moedas)`);
+
+      missiles.push({
+        x: car.x,
+        y: car.y,
+        targetId: leader.id,
+        speed: 480
+      });
+    }
+
+    function applyShield(car) {
+      car.shieldTimer = 15.0; // 15 segundos de imunidade
+      playSound('shield');
+      showToast('🛡️', `${car.username} ativou ESCUDO 15s! (50 Moedas)`);
+      floatingTexts.push({ x: car.x, y: car.y - 35, text: '🛡️ ESCUDO 15s!', color: '#a855f7', alpha: 1, vy: -30 });
+    }
+
+    function applyBomb(car) {
+      playSound('bomb');
+      showToast('💣', `${car.username} detonou uma BOMBA EM ÁREA! (100 Moedas)`);
+      spawnExplosion(car.x, car.y);
+
+      cars.forEach(other => {
+        if (other !== car) {
+          const dist = Math.hypot(other.x - car.x, other.y - car.y);
+          if (dist < 120) {
+            if (other.shieldTimer > 0) {
+              playSound('shield');
+            } else {
+              other.stunTimer = 3.5;
+              other.speed *= 0.3;
+              floatingTexts.push({ x: other.x, y: other.y - 30, text: '💥 ATINGIDO!', color: '#ff3b5c', alpha: 1, vy: -25 });
+            }
+          }
+        }
+      });
+    }
+
+    function spawnExplosion(x, y) {
+      for (let i = 0; i < 35; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = Math.random() * 120 + 40;
+        particles.push({
+          x, y,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd,
+          size: Math.random() * 5 + 3,
+          color: Math.random() > 0.5 ? '#ff3b5c' : '#ffd700',
+          alpha: 1.0
+        });
+      }
+    }
+
+    // ==========================================================================
+    // 6. CONEXÃO WEBSOCKET / SOCKET.IO COM RECONEXÃO AUTOMÁTICA
+    // ==========================================================================
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+
+    function setOnline(online) {
+      if (online) {
+        statusDot.className = 'status-dot status-online';
+        statusText.innerText = '🟢 Online';
+      } else {
+        statusDot.className = 'status-dot status-offline';
+        statusText.innerText = '🔴 Reconectando...';
+      }
+    }
+
+    // Tenta Socket.io com fallback nativo para WebSocket
+    let socket = null;
+    function initConnection() {
+      if (typeof io !== 'undefined') {
+        try {
+          socket = io(SOCKET_URL, {
+            transports: ['websocket', 'polling'],
+            timeout: 6000,
+            reconnection: true,
+            reconnectionDelay: 1500
+          });
+
+          socket.on('connect', () => setOnline(true));
+          socket.on('disconnect', () => setOnline(false));
+          socket.on('connect_error', () => setOnline(false));
+
+          // Eventos da Live
+          socket.on('like', (data) => handleLikeEvent(data?.username));
+          socket.on('gift', (data) => handleGiftEvent(data?.username, data?.coins || data?.totalCoins || 1));
+          socket.on('chat', (data) => data?.username && addParticipant(data.username, data.color));
+          socket.on('join', (data) => data?.username && addParticipant(data.username, data.color));
+          socket.on('novo_jogador', (data) => data?.username && addParticipant(data.username, data.color));
+
+          socket.on('turbo', (data) => applyTurbo(cars.find(c => c.username === data?.username) || cars[0]));
+          socket.on('nitro', (data) => applyNitro(cars.find(c => c.username === data?.username) || cars[0]));
+          socket.on('oleo', (data) => applyOil(cars.find(c => c.username === data?.username) || cars[0]));
+          socket.on('oil', (data) => applyOil(cars.find(c => c.username === data?.username) || cars[0]));
+          socket.on('missel', (data) => applyMissile(cars.find(c => c.username === data?.username) || cars[0]));
+          socket.on('missile', (data) => applyMissile(cars.find(c => c.username === data?.username) || cars[0]));
+          socket.on('escudo', (data) => applyShield(cars.find(c => c.username === data?.username) || cars[0]));
+          socket.on('shield', (data) => applyShield(cars.find(c => c.username === data?.username) || cars[0]));
+          socket.on('bomba', (data) => applyBomb(cars.find(c => c.username === data?.username) || cars[0]));
+          socket.on('bomb', (data) => applyBomb(cars.find(c => c.username === data?.username) || cars[0]));
+          socket.on('reset', () => resetRace());
+        } catch (err) {
+          fallbackWebSocket();
+        }
+      } else {
+        fallbackWebSocket();
+      }
+    }
+
+    function fallbackWebSocket() {
+      try {
+        const ws = new WebSocket(WS_URL);
+        ws.onopen = () => setOnline(true);
+        ws.onclose = () => {
+          setOnline(false);
+          setTimeout(fallbackWebSocket, 3000);
+        };
+        ws.onerror = () => ws.close();
+        ws.onmessage = (ev) => {
+          try {
+            const data = JSON.parse(ev.data);
+            const type = (data.type || '').toLowerCase();
+            if (type === 'like') handleLikeEvent(data.username);
+            else if (type === 'gift') handleGiftEvent(data.username, data.totalCoins || data.coins || 1);
+            else if (type === 'join' || type === 'chat') addParticipant(data.username, data.color);
+          } catch (e) {}
+        };
+      } catch (e) {
+        setTimeout(fallbackWebSocket, 3000);
+      }
+    }
+
+    initConnection();
+
+    // ==========================================================================
+    // 7. TOASTS & UI
+    // ==========================================================================
+    function showToast(icon, text) {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = 'toast-item';
+      toast.innerHTML = `<span>${icon}</span> <span>${text}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-10px)';
+        toast.style.transition = 'all 0.35s ease';
+        setTimeout(() => toast.remove(), 350);
+      }, 3000);
+    }
+
+    // ==========================================================================
+    // 8. CRONÔMETRO 90S, PÓDIO 10S E RESET AUTOMÁTICO
+    // ==========================================================================
+    setInterval(() => {
+      if (isFrozen) return;
+      if (timeLeft > 0) {
+        timeLeft--;
+        updateTimerUI();
+        if (timeLeft <= 0) {
+          triggerFinish();
+        }
+      }
+    }, 1000);
+
+    function updateTimerUI() {
+      const mins = Math.floor(timeLeft / 60);
+      const secs = timeLeft % 60;
+      const str = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      const el = document.getElementById('timerText');
+      const disp = document.getElementById('timerDisplay');
+      if (el) el.innerText = str;
+      if (disp) {
+        if (timeLeft <= 15) disp.classList.add('urgent');
+        else disp.classList.remove('urgent');
+      }
+
+      const pct = (timeLeft / RACE_DURATION) * 100;
+      const bar = document.getElementById('progressFill');
+      if (bar) bar.style.width = pct + '%';
+    }
+
+    function triggerFinish() {
+      isFrozen = true;
+      playSound('turbo');
+      cars.sort((a, b) => b.distance - a.distance);
+
+      const modal = document.getElementById('podiumModal');
+      if (modal) {
+        if (cars[0]) {
+          document.getElementById('podium1').innerText = cars[0].username;
+          document.getElementById('podium1Dist').innerText = `${Math.floor(cars[0].distance)}m`;
+        }
+        if (cars[1]) {
+          document.getElementById('podium2').innerText = cars[1].username;
+          document.getElementById('podium2Dist').innerText = `${Math.floor(cars[1].distance)}m`;
+        }
+        if (cars[2]) {
+          document.getElementById('podium3').innerText = cars[2].username;
+          document.getElementById('podium3Dist').innerText = `${Math.floor(cars[2].distance)}m`;
+        }
+        modal.classList.add('show');
+      }
+
+      let count = 10;
+      const countEl = document.getElementById('podiumCountdown');
+      if (countEl) countEl.innerText = count;
+
+      clearInterval(podiumInterval);
+      podiumInterval = setInterval(() => {
+        count--;
+        if (countEl) countEl.innerText = count;
+        if (count <= 0) {
+          clearInterval(podiumInterval);
+          resetRace();
+        }
+      }, 1000);
+    }
+
+    function resetRace() {
+      const modal = document.getElementById('podiumModal');
+      if (modal) modal.classList.remove('show');
+
+      isFrozen = false;
+      timeLeft = RACE_DURATION;
+      updateTimerUI();
+
+      cars.forEach((c, idx) => {
+        c.distance = 0;
+        c.speed = c.baseSpeed;
+        c.turboTimer = 0;
+        c.nitroTimer = 0;
+        c.oilTimer = 0;
+        c.stunTimer = 0;
+        c.shieldTimer = 0;
+        c.spinAngle = 0;
+        c.driftAngle = 0;
+        c.lane = idx % LANE_COUNT;
+      });
+
+      particles = [];
+      skidMarks = [];
+      missiles = [];
+      floatingTexts = [];
+    }
+
+    // ==========================================================================
+    // 9. LOOP DE RENDERIZAÇÃO CANVAS 2D HD (60 FPS)
+    // ==========================================================================
+    let lastTime = performance.now();
+
+    function updatePhysics(dt) {
+      if (isFrozen) return;
+
+      const roadLeft = 28;
+      const roadRight = cssWidth - 28;
+      const roadWidth = roadRight - roadLeft;
+      const laneWidth = roadWidth / LANE_COUNT;
+
+      let maxDist = 0;
+      cars.forEach(c => { if (c.distance > maxDist) maxDist = c.distance; });
+
+      trackScrollY = (trackScrollY + 22) % 10000;
+
+      // Atualiza Carros
+      cars.forEach((car, i) => {
+        if (car.turboTimer > 0) car.turboTimer -= dt;
+        if (car.nitroTimer > 0) car.nitroTimer -= dt;
+        if (car.oilTimer > 0) {
+          car.oilTimer -= dt;
+          car.spinAngle += dt * 14;
+        } else {
+          car.spinAngle = 0;
+        }
+        if (car.stunTimer > 0) car.stunTimer -= dt;
+        if (car.shieldTimer > 0) car.shieldTimer -= dt;
+
+        let spd = car.baseSpeed;
+        if (car.turboTimer > 0) spd += 130;
+        if (car.nitroTimer > 0) spd += 180;
+        if (car.oilTimer > 0) spd *= 0.45;
+        if (car.stunTimer > 0) spd *= 0.25;
+
+        // Variação orgânica suave
+        spd += Math.sin(performance.now() * 0.0025 + i * 1.8) * 7;
+        car.speed = spd;
+        car.distance += (spd / 3.6) * dt;
+
+        // Movimento lateral suave para o centro da faixa
+        const targetX = roadLeft + (car.lane + 0.5) * laneWidth;
+        const diffX = targetX - car.x;
+        car.x += diffX * 0.14;
+        car.driftAngle = Math.max(-0.25, Math.min(0.25, diffX * 0.02));
+
+        // Posição Y na pista em relação ao líder
+        const targetY = (cssHeight * 0.68) - (car.distance - maxDist) * 4.6;
+        car.y = Math.max(140, Math.min(cssHeight - 80, targetY));
+
+        // Partículas de fumaça / fogo de escape quando com Turbo ou Nitro
+        if (car.turboTimer > 0 || car.nitroTimer > 0) {
+          const isNitro = car.nitroTimer > 0;
+          particles.push({
+            x: car.x + (Math.random() - 0.5) * 8,
+            y: car.y + 22,
+            vx: (Math.random() - 0.5) * 15,
+            vy: Math.random() * 40 + 60,
+            size: Math.random() * 3 + 2,
+            color: isNitro ? '#00ffcc' : '#ff7700',
+            alpha: 0.9
+          });
+        }
+      });
+
+      // Ordena por distância
+      cars.sort((a, b) => b.distance - a.distance);
+      cars.forEach((c, idx) => { c.rank = idx + 1; });
+
+      // Atualiza Leaderboard Top 5 no DOM
+      const listEl = document.getElementById('leaderList');
+      if (listEl) {
+        listEl.innerHTML = cars.slice(0, 5).map(c => `
+          <div class="leader-row pos-${c.rank}">
+            <div class="leader-name">
+              <span style="color:#00ffcc; font-weight:900;">${c.rank}º</span>
+              <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:${c.color};"></span>
+              <span>${c.username}</span>
+            </div>
+            <div class="leader-dist">${Math.floor(c.distance)}m</div>
+          </div>
+        `).join('');
+      }
+
+      // Mísseis
+      for (let i = missiles.length - 1; i >= 0; i--) {
+        const m = missiles[i];
+        const target = cars.find(c => c.id === m.targetId) || cars[0];
+        if (target) {
+          const dx = target.x - m.x;
+          const dy = target.y - m.y;
+          const angle = Math.atan2(dy, dx);
+          m.x += Math.cos(angle) * m.speed * dt;
+          m.y += Math.sin(angle) * m.speed * dt;
+
+          // Rastro de fumaça do míssil
+          particles.push({
+            x: m.x,
+            y: m.y,
+            vx: (Math.random() - 0.5) * 10,
+            vy: (Math.random() - 0.5) * 10,
+            size: 2.5,
+            color: '#ff3b5c',
+            alpha: 0.7
+          });
+
+          if (Math.hypot(dx, dy) < 18) {
+            missiles.splice(i, 1);
+            if (target.shieldTimer > 0) {
+              playSound('shield');
+            } else {
+              playSound('bomb');
+              target.stunTimer = 3.5;
+              target.speed *= 0.25;
+              spawnExplosion(target.x, target.y);
+            }
+          }
+        }
+      }
+
+      // Partículas
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.alpha -= dt * 1.6;
+        if (p.alpha <= 0) particles.splice(i, 1);
+      }
+      if (particles.length > 250) particles.splice(0, particles.length - 250);
+
+      // Floating Texts
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ft.y += ft.vy * dt;
+        ft.alpha -= dt * 0.9;
+        if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+      }
+
+      // Linhas de Velocidade
+      speedLines.forEach(l => {
+        l.y += l.speed;
+        if (l.y > cssHeight + l.length) {
+          l.y = -l.length;
+          l.x = Math.random() * cssWidth;
+        }
+      });
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+      const roadLeft = 28;
+      const roadRight = cssWidth - 28;
+      const roadWidth = roadRight - roadLeft;
+      const laneWidth = roadWidth / LANE_COUNT;
+
+      // 1. Fundo e Asfalto
+      const bgGrad = ctx.createLinearGradient(0, 0, cssWidth, 0);
+      bgGrad.addColorStop(0, '#04060d');
+      bgGrad.addColorStop(roadLeft / cssWidth, '#0b1122');
+      bgGrad.addColorStop(0.5, '#121b33');
+      bgGrad.addColorStop(roadRight / cssWidth, '#0b1122');
+      bgGrad.addColorStop(1, '#04060d');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, cssWidth, cssHeight);
+
+      // Pista Central Asfalto
+      ctx.fillStyle = '#101728';
+      ctx.fillRect(roadLeft, 0, roadWidth, cssHeight);
+
+      // 2. Zebras Laterais 3D
+      const curbWidth = 9;
+      const curbSegment = 24;
+      for (let y = -curbSegment * 2; y < cssHeight + curbSegment * 2; y += curbSegment) {
+        const isRed = Math.floor((y + trackScrollY) / curbSegment) % 2 === 0;
+        const curY = y + (trackScrollY % curbSegment);
+
+        // Zebra Esquerda
+        ctx.fillStyle = isRed ? '#ef4444' : '#f8fafc';
+        ctx.fillRect(roadLeft - curbWidth, curY, curbWidth, curbSegment);
+        // Bevel 3D
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.fillRect(roadLeft - curbWidth, curY + curbSegment - 2, curbWidth, 2);
+
+        // Zebra Direita
+        ctx.fillStyle = isRed ? '#ef4444' : '#f8fafc';
+        ctx.fillRect(roadRight, curY, curbWidth, curbSegment);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.fillRect(roadRight, curY + curbSegment - 2, curbWidth, 2);
+      }
+
+      // 3. Linhas das 6 Faixas
+      ctx.strokeStyle = 'rgba(0, 255, 204, 0.3)';
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([18, 18]);
+      ctx.lineDashOffset = -trackScrollY;
+      for (let i = 1; i < LANE_COUNT; i++) {
+        const lx = roadLeft + i * laneWidth;
+        ctx.beginPath();
+        ctx.moveTo(lx, 0);
+        ctx.lineTo(lx, cssHeight);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      // 4. Marcas de Pneu (Skid Marks)
+      skidMarks.forEach((sm, idx) => {
+        ctx.strokeStyle = `rgba(0, 0, 0, ${sm.alpha * 0.4})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(sm.x - 7, sm.y);
+        ctx.lineTo(sm.x - 7, sm.y + sm.length);
+        ctx.moveTo(sm.x + 7, sm.y);
+        ctx.lineTo(sm.x + 7, sm.y + sm.length);
+        ctx.stroke();
+        sm.y += 12;
+        if (sm.y > cssHeight + 40) skidMarks.splice(idx, 1);
+      });
+
+      // 5. Linhas de Velocidade (Speed Lines)
+      if (!isFrozen) {
+        speedLines.forEach(l => {
+          ctx.strokeStyle = `rgba(0, 255, 204, ${l.alpha * 0.6})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(l.x, l.y);
+          ctx.lineTo(l.x, l.y + l.length);
+          ctx.stroke();
+        });
+      }
+
+      // 6. Desenha Carros com Faróis e Iluminação
+      cars.forEach(car => drawSuperCar(ctx, car));
+
+      // 7. Mísseis
+      missiles.forEach(m => {
+        ctx.save();
+        ctx.translate(m.x, m.y);
+        ctx.fillStyle = '#ff3b5c';
+        ctx.beginPath();
+        ctx.arc(0, 0, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // 8. Partículas
+      particles.forEach(p => {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.alpha);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // 9. Textos Flutuantes
+      floatingTexts.forEach(ft => {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, ft.alpha);
+        ctx.font = '900 11px sans-serif';
+        ctx.fillStyle = ft.color;
+        ctx.textAlign = 'center';
+        ctx.shadowColor = ft.color;
+        ctx.shadowBlur = 8;
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.restore();
+      });
+    }
+
+    // DESENHO DETALHADO DO SUPERCARRO 2D
+    function drawSuperCar(ctx, car) {
+      ctx.save();
+      ctx.translate(car.x, car.y);
+
+      if (car.spinAngle !== 0) {
+        ctx.rotate(car.spinAngle);
+      } else if (car.driftAngle) {
+        ctx.rotate(car.driftAngle);
+      }
+
+      const w = 22;
+      const h = 46;
+
+      // 1. FACHO DE FARÓIS DIANTEIROS (Ilumina o Asfalto)
+      const hGrad = ctx.createLinearGradient(0, -h/2, 0, -h/2 - 110);
+      hGrad.addColorStop(0, 'rgba(254, 240, 138, 0.4)');
+      hGrad.addColorStop(0.4, 'rgba(254, 240, 138, 0.15)');
+      hGrad.addColorStop(1, 'rgba(254, 240, 138, 0)');
+      ctx.fillStyle = hGrad;
+      ctx.beginPath();
+      ctx.moveTo(-w/2 + 2, -h/2);
+      ctx.lineTo(-w/2 - 24, -h/2 - 110);
+      ctx.lineTo(w/2 + 24, -h/2 - 110);
+      ctx.lineTo(w/2 - 2, -h/2);
+      ctx.closePath();
+      ctx.fill();
+
+      // 2. NEON UNDERGLOW SOB O CHASSI
+      const underglowColor = car.turboTimer > 0 ? '#ffd700' : car.nitroTimer > 0 ? '#00ffcc' : car.color;
+      const uGrad = ctx.createRadialGradient(0, 0, 4, 0, 0, 34);
+      uGrad.addColorStop(0, underglowColor + '77');
+      uGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = uGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, 34, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 3. SOMBRA DO CARRO
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.beginPath();
+      ctx.roundRect(-w/2 + 2, -h/2 + 3, w, h + 2, 7);
+      ctx.fill();
+
+      // 4. PNEUS
+      ctx.fillStyle = '#0a0e17';
+      ctx.fillRect(-w/2 - 3, -h/2 + 6, 4, 10);
+      ctx.fillRect(w/2 - 1, -h/2 + 6, 4, 10);
+      ctx.fillRect(-w/2 - 3, h/2 - 16, 4, 11);
+      ctx.fillRect(w/2 - 1, h/2 - 16, 4, 11);
+
+      // 5. CHASSI COM PINTURA METÁLICA
+      const bodyGrad = ctx.createLinearGradient(-w/2, 0, w/2, 0);
+      bodyGrad.addColorStop(0, car.color);
+      bodyGrad.addColorStop(0.35, '#ffffff44');
+      bodyGrad.addColorStop(0.7, car.color);
+      bodyGrad.addColorStop(1, '#00000055');
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.roundRect(-w/2, -h/2, w, h, 7);
+      ctx.fill();
+
+      // 6. FAIXAS DE CORRIDA DUPLAS
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.fillRect(-2.5, -h/2 + 2, 1.8, h - 8);
+      ctx.fillRect(0.7, -h/2 + 2, 1.8, h - 8);
+
+      // 7. PÁRA-BRISA E VIDROS
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(-w/2 + 3, -h/2 + 12, w - 6, 10);
+
+      // 8. TETO & AEROFÓLIO TRASEIRO
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(-w/2 + 4, -h/2 + 22, w - 8, 11);
+      ctx.fillRect(-w/2 - 1, h/2 - 5, w + 2, 3.5);
+
+      // 9. FARÓIS E LANTERNAS
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(-w/2 + 2, -h/2, 4.5, 2);
+      ctx.fillRect(w/2 - 6.5, -h/2, 4.5, 2);
+      ctx.fillStyle = '#ff3b5c';
+      ctx.fillRect(-w/2 + 3, h/2 - 2, w - 6, 2);
+
+      // 10. ESCUDO PROTETOR PULSANTE
+      if (car.shieldTimer > 0) {
+        ctx.strokeStyle = '#c084fc';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = '#c084fc';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(0, 0, 32, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      ctx.restore();
+
+      // 11. TAG DE NOME DO PILOTO (ANTI-SOBREPOSIÇÃO DINÂMICA)
+      ctx.save();
+      const baseBadgeY = car.y - 36;
+      // Stagger inteligente por faixa e deslocamento para nunca sobrepor
+      const staggerY = (car.lane % 2 === 1 ? 16 : 0) + (car.badgeOffset || 0);
+      const bY = baseBadgeY - staggerY;
+
+      ctx.font = 'bold 9.5px sans-serif';
+      const badgeText = `${car.rank}º ${car.username}`;
+      const textWidth = Math.max(ctx.measureText(badgeText).width + 12, 60);
+
+      // Fundo Escuro com Borda Neon #00FFCC
+      ctx.fillStyle = 'rgba(8, 14, 28, 0.94)';
+      ctx.strokeStyle = car.rank === 1 ? '#ffd700' : car.rank === 2 ? '#e2e8f0' : car.rank === 3 ? '#cd7f32' : '#00ffcc';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.roundRect(car.x - textWidth / 2, bY - 10, textWidth, 17, 8);
+      ctx.fill();
+      ctx.stroke();
+
+      // Texto do Piloto
+      ctx.fillStyle = car.rank === 1 ? '#ffd700' : '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(badgeText, car.x, bY + 2);
+      ctx.restore();
+    }
+
+    // Loop Principal
+    function gameLoop(now) {
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+      updatePhysics(dt);
+      render();
+      requestAnimationFrame(gameLoop);
+    }
+
+    updateTimerUI();
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>
