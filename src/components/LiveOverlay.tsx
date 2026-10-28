@@ -1,6 +1,6 @@
 import React from 'react';
-import { Car, LiveGiftNotification, LiveComment } from '../types/game';
-import { Trophy, Shield, Flame, Zap, RotateCcw, Crown, Radio, Sparkles, Timer, Medal } from 'lucide-react';
+import { Car, LiveGiftNotification } from '../types/game';
+import { Trophy, Shield, Flame, Zap, Crown, Sparkles, Timer } from 'lucide-react';
 
 interface LiveOverlayProps {
   cars: Car[];
@@ -9,9 +9,6 @@ interface LiveOverlayProps {
   isFinished: boolean;
   podiumCountdown: number;
   giftToasts: LiveGiftNotification[];
-  chatFeed: LiveComment[];
-  onResetRace: () => void;
-  socketConnected: boolean;
 }
 
 export const LiveOverlay: React.FC<LiveOverlayProps> = ({
@@ -20,10 +17,7 @@ export const LiveOverlay: React.FC<LiveOverlayProps> = ({
   timeLeft,
   isFinished,
   podiumCountdown,
-  giftToasts,
-  chatFeed,
-  onResetRace,
-  socketConnected
+  giftToasts
 }) => {
   const topCars = cars.slice(0, 5);
   const winner = cars[0];
@@ -42,46 +36,39 @@ export const LiveOverlay: React.FC<LiveOverlayProps> = ({
   const isUrgent = timeLeft <= 15 && timeLeft > 0;
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-3 select-none">
+    <div className="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-3 md:p-4 select-none">
       {/* ---------------------------------------------------- */}
       {/* TOPO: BANNER TIKTOK NEON + TEMPORIZADOR 90S + LEADERBOARD */}
       {/* ---------------------------------------------------- */}
-      <div className="flex flex-col gap-2">
-        {/* 1. BANNER DE CHAMADA DO TIKTOK (CAIXA ALTA & NEON BRILHANTE) */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-rose-500 via-fuchsia-600 to-cyan-500 p-[2px] shadow-[0_0_25px_rgba(244,63,94,0.6)]">
-          <div className="bg-slate-950/90 backdrop-blur-md px-3 py-2 rounded-[14px] text-center">
-            <div className="text-[12px] font-black tracking-wider uppercase text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.9)] flex items-center justify-center gap-1.5 animate-pulse">
+      <div className="flex flex-col gap-2 w-full max-w-lg mx-auto">
+        {/* 1. BANNER DE CHAMADA DO TIKTOK (TOTALMENTE LIMPO, DESTACADO E NEON) */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-rose-500 via-fuchsia-600 to-cyan-500 p-[2.5px] shadow-[0_0_30px_rgba(244,63,94,0.7)]">
+          <div className="bg-slate-950/92 backdrop-blur-md px-4 py-3 rounded-[13.5px] text-center">
+            <div className="text-[13px] sm:text-sm font-black tracking-wider uppercase text-white drop-shadow-[0_0_14px_rgba(255,255,255,0.95)] flex items-center justify-center gap-2 animate-pulse">
               <span>⚡</span>
               <span className="bg-gradient-to-r from-yellow-300 via-rose-300 to-cyan-300 bg-clip-text text-transparent">
                 COMENTE QUALQUER COISA PARA ENTRAR NA CORRIDA!
               </span>
               <span>⚡</span>
             </div>
-            <div className="text-[9.5px] font-bold text-cyan-300 tracking-wide mt-0.5 flex items-center justify-center gap-2">
-              <span>🎁 Envie presentes para Turbo, Nitro e Sabotagem!</span>
-              <span className="flex items-center gap-1 font-mono text-[8.5px] text-emerald-400 bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-500/40">
-                <Radio className="w-2.5 h-2.5 animate-pulse" />
-                <span>{socketConnected ? 'AO VIVO' : 'SIMULAÇÃO'}</span>
-              </span>
-            </div>
           </div>
         </div>
 
-        {/* 2. TEMPORIZADOR DE CONTAGEM REGRESSIVA 90s EM DESTAQUE */}
-        <div className="bg-slate-950/90 border border-cyan-500/30 rounded-2xl px-3 py-2 backdrop-blur-md shadow-xl flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        {/* 2. TEMPORIZADOR DE CONTAGEM REGRESSIVA 90s + CONTADOR DE DISTÂNCIA */}
+        <div className="bg-slate-950/90 border border-cyan-500/35 rounded-2xl px-3.5 py-2 backdrop-blur-md shadow-xl flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
             <div className={`p-1.5 rounded-xl ${isUrgent ? 'bg-rose-500/30 text-rose-400 animate-bounce' : 'bg-cyan-500/20 text-cyan-400'}`}>
-              <Timer className="w-4 h-4" />
+              <Timer className="w-5 h-5" />
             </div>
             <div>
               <div className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400">
                 TEMPO RESTANTE
               </div>
               <div
-                className={`font-mono text-lg font-black tracking-wider tabular-nums ${
+                className={`font-mono text-lg sm:text-xl font-black tracking-wider tabular-nums ${
                   isUrgent
-                    ? 'text-rose-400 animate-pulse drop-shadow-[0_0_10px_rgba(244,63,94,0.8)]'
-                    : 'text-white drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]'
+                    ? 'text-rose-400 animate-pulse drop-shadow-[0_0_12px_rgba(244,63,94,0.9)]'
+                    : 'text-white drop-shadow-[0_0_10px_rgba(6,182,212,0.7)]'
                 }`}
               >
                 ⏱️ {formatTime(timeLeft)}
@@ -89,11 +76,11 @@ export const LiveOverlay: React.FC<LiveOverlayProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 max-w-[150px] flex flex-col gap-1 items-end">
-            <span className="text-[9px] font-bold text-slate-400">
-              Líder: <strong className="text-cyan-300">{winner ? Math.floor(winner.distance) : 0}m</strong>
+          <div className="flex-1 max-w-[170px] flex flex-col gap-1 items-end">
+            <span className="text-[10px] font-bold text-slate-300">
+              Líder: <strong className="text-cyan-300 font-mono text-xs">{winner ? Math.floor(winner.distance) : 0}m</strong>
             </span>
-            <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-white/10">
+            <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-white/10 p-[1px]">
               <div
                 className={`h-full rounded-full transition-all duration-200 ${
                   isUrgent
@@ -106,7 +93,7 @@ export const LiveOverlay: React.FC<LiveOverlayProps> = ({
           </div>
         </div>
 
-        {/* 3. TABELA DE CLASSIFICAÇÃO DOS PRIMEIROS COLOCADOS */}
+        {/* 3. TABELA DE CLASSIFICAÇÃO AO VIVO */}
         <div className="bg-slate-950/90 border border-white/10 rounded-2xl p-2.5 backdrop-blur-md shadow-2xl">
           <div className="text-[9.5px] font-black uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between px-1">
             <span className="flex items-center gap-1.5 text-amber-400">
@@ -135,7 +122,7 @@ export const LiveOverlay: React.FC<LiveOverlayProps> = ({
               return (
                 <div
                   key={car.id}
-                  className={`flex items-center justify-between px-2 py-1 rounded-xl text-[11px] border-l-[3px] transition-all backdrop-blur-sm ${badgeStyle}`}
+                  className={`flex items-center justify-between px-2.5 py-1 rounded-xl text-[11px] border-l-[3px] transition-all backdrop-blur-sm ${badgeStyle}`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span
@@ -151,7 +138,7 @@ export const LiveOverlay: React.FC<LiveOverlayProps> = ({
                       style={{ backgroundColor: car.color }}
                     />
 
-                    <span className="truncate max-w-[125px] font-bold text-slate-100">
+                    <span className="truncate max-w-[130px] font-bold text-slate-100">
                       {car.username}
                     </span>
                   </div>
@@ -176,9 +163,7 @@ export const LiveOverlay: React.FC<LiveOverlayProps> = ({
         </div>
       </div>
 
-      {/* ---------------------------------------------------- */}
-      {/* CENTRO-ESQUERDA: NOTIFICAÇÕES DE PRESENTES / AÇÕES */}
-      {/* ---------------------------------------------------- */}
+      {/* NOTIFICAÇÕES DE PRESENTES E AÇÕES EM TEMPO REAL */}
       <div className="flex flex-col gap-1.5 max-w-[270px] my-auto">
         {giftToasts.map((toast) => (
           <div
@@ -196,22 +181,8 @@ export const LiveOverlay: React.FC<LiveOverlayProps> = ({
         ))}
       </div>
 
-      {/* ---------------------------------------------------- */}
-      {/* BASE: FEED DE CHAT AO VIVO ESTILO TIKTOK */}
-      {/* ---------------------------------------------------- */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex flex-col gap-1 max-h-[95px] overflow-hidden justify-end">
-          {chatFeed.slice(-4).map((msg) => (
-            <div
-              key={msg.id}
-              className="bg-slate-950/80 border border-white/10 rounded-2xl px-3 py-1 text-[10px] w-fit max-w-[95%] backdrop-blur-md truncate shadow-lg animate-in fade-in"
-            >
-              <span className="font-bold text-cyan-400 mr-1.5">{msg.username}:</span>
-              <span className="text-slate-200 font-medium">{msg.comment}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* ESPAÇO INFERIOR LIVRE */}
+      <div className="h-4" />
 
       {/* ---------------------------------------------------- */}
       {/* PÓDIO DA RODADA (10 SEGUNDOS COM REINÍCIO AUTOMÁTICO) */}
@@ -234,7 +205,6 @@ export const LiveOverlay: React.FC<LiveOverlayProps> = ({
             RESULTADO FINAL DA CORRIDA
           </h2>
 
-          {/* Os 3 Primeiros Colocados em Destaque */}
           <div className="grid grid-cols-3 gap-2 w-full max-w-sm mb-4">
             {/* 2º Lugar */}
             {second && (
@@ -297,20 +267,12 @@ export const LiveOverlay: React.FC<LiveOverlayProps> = ({
           </div>
 
           {/* Temporizador de Reinício Automático em 10 Segundos */}
-          <div className="bg-slate-900/90 border border-cyan-500/30 rounded-xl px-4 py-2 mb-4 flex items-center gap-2">
+          <div className="bg-slate-900/90 border border-cyan-500/30 rounded-xl px-4 py-2 flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
             <span className="text-xs font-bold text-slate-300">
-              Reiniciando corrida automaticamente em: <strong className="text-cyan-400 font-mono text-sm">{podiumCountdown}s</strong>
+              Reiniciando automaticamente em: <strong className="text-cyan-400 font-mono text-sm">{podiumCountdown}s</strong>
             </span>
           </div>
-
-          <button
-            onClick={onResetRace}
-            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:brightness-110 text-white font-black text-xs rounded-xl shadow-[0_4px_16px_rgba(16,185,129,0.4)] transition-all cursor-pointer active:scale-95"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reiniciar Agora</span>
-          </button>
         </div>
       )}
     </div>

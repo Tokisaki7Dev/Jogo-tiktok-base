@@ -6,15 +6,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import confetti from 'canvas-confetti';
-import { Car, LiveGiftNotification, LiveComment, ActionType } from './types/game';
+import { Car, LiveGiftNotification, ActionType } from './types/game';
 import { RaceCanvas, applyCarAction, CAR_COLORS } from './components/RaceCanvas';
 import { LiveOverlay } from './components/LiveOverlay';
-import { StreamerControlPanel } from './components/StreamerControlPanel';
-import { CodeExportModal } from './components/CodeExportModal';
 import { soundEngine } from './utils/audio';
-import { Smartphone, Monitor, Sparkles } from 'lucide-react';
 
-const RACE_DURATION = 90; // Exatamente 90 segundos (1m30s)
+// URL fixa do backend Socket.io
+const SOCKET_URL = 'https://tiktok-live-backend-39v9.onrender.com';
+const RACE_DURATION = 90; // Exatamente 90 segundos
 
 const INITIAL_PILOTS = [
   '@lucas_drift', '@pedro_turbo', '@julia_veloz', '@marcos_nitro', '@beatriz_gt',
@@ -28,28 +27,17 @@ export default function App() {
   const [isFinished, setIsFinished] = useState<boolean>(false);
   const [podiumCountdown, setPodiumCountdown] = useState<number>(10);
   const [giftToasts, setGiftToasts] = useState<LiveGiftNotification[]>([]);
-  const [chatFeed, setChatFeed] = useState<LiveComment[]>([
-    { id: '1', username: '@sistema', comment: 'COMENTE QUALQUER COISA PARA ENTRAR NA CORRIDA! 🏁' }
-  ]);
-
-  // Audio and simulation controls
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
-  const [autoSimulate, setAutoSimulate] = useState<boolean>(true);
-  const [socketUrl, setSocketUrl] = useState<string>('http://localhost:3001');
-  const [socketConnected, setSocketConnected] = useState<boolean>(false);
-  const [viewMode, setViewMode] = useState<'split' | 'phone_only'>('split');
-  const [isCodeModalOpen, setIsCodeModalOpen] = useState<boolean>(false);
 
   const socketRef = useRef<Socket | null>(null);
 
-  // Initialize up to 12 Cars
+  // Inicializa até 12 carros
   const initCarsList = () => {
     const newCars: Car[] = INITIAL_PILOTS.map((username, idx) => ({
       id: `car_${idx}_${Date.now()}`,
       username,
       color: CAR_COLORS[idx % CAR_COLORS.length],
       secondaryColor: '#ffffff',
-      lane: idx % 6, // 6 faixas bem distribuídas
+      lane: idx % 6,
       targetLane: idx % 6,
       x: 0,
       y: 0,
@@ -79,7 +67,59 @@ export default function App() {
   }, []);
 
   // ----------------------------------------------------
-  // SISTEMA DE TEMPO: CICLO DE 90 SEGUNDOS + PÓDIO DE 10S
+  // CONEXÃO DIRETA E AUTOMÁTICA AO BACKEND SOCKET.IO
+  // ----------------------------------------------------
+  useEffect(() => {
+    let socket: Socket | null = null;
+    try {
+      socket = io(SOCKET_URL, {
+        transports: ['websocket', 'polling'],
+        timeout: 5000,
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000
+      });
+      socketRef.current = socket;
+
+      // Entrar na corrida
+      socket.on('join', (data: { username: string; color?: string }) => {
+        if (data && data.username) handleAddCar(data.username, data.color);
+      });
+      socket.on('novo_jogador', (data: { username: string; color?: string }) => {
+        if (data && data.username) handleAddCar(data.username, data.color);
+      });
+
+      // Ações em tempo real disparadas pela Live
+      const handleRemoteAction = (action: ActionType, data?: { username?: string }) => {
+        handleTriggerAction(action, data?.username);
+      };
+
+      socket.on('turbo', (data) => handleRemoteAction('TURBO', data));
+      socket.on('nitro', (data) => handleRemoteAction('NITRO', data));
+      socket.on('oil', (data) => handleRemoteAction('OLEO', data));
+      socket.on('oleo', (data) => handleRemoteAction('OLEO', data));
+      socket.on('missile', (data) => handleRemoteAction('MISSEL', data));
+      socket.on('missel', (data) => handleRemoteAction('MISSEL', data));
+      socket.on('bomba', (data) => handleRemoteAction('MISSEL', data));
+      socket.on('shield', (data) => handleRemoteAction('ESCUDO', data));
+      socket.on('escudo', (data) => handleRemoteAction('ESCUDO', data));
+      socket.on('action', (data) => {
+        if (data && data.action) {
+          handleRemoteAction(data.action.toUpperCase(), data);
+        }
+      });
+      socket.on('reset', () => handleResetRace());
+    } catch (err) {
+      console.warn('Erro ao conectar ao Socket.io:', err);
+    }
+
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  }, []);
+
+  // ----------------------------------------------------
+  // CICLO DE TEMPO: 90 SEGUNDOS + PÓDIO DE 10S
   // ----------------------------------------------------
   useEffect(() => {
     if (isFinished) return;
@@ -87,7 +127,6 @@ export default function App() {
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          // TEMPO ZEROU (00:00)
           clearInterval(timer);
           triggerRaceFinish();
           return 0;
@@ -99,20 +138,17 @@ export default function App() {
     return () => clearInterval(timer);
   }, [isFinished]);
 
-  // Finalização da rodada: congela carros e ativa pódio de 10s
   const triggerRaceFinish = () => {
     setIsFinished(true);
     soundEngine.playWin();
     confetti({
-      particleCount: 100,
-      spread: 85,
+      particleCount: 110,
+      spread: 90,
       origin: { y: 0.45 }
     });
-
-    addChatMessage('@sistema', '⏱️ TEMPO ESGOTADO! Conheça os campeões da rodada!');
   };
 
-  // Temporizador de 10 segundos do Pódio com reinício automático
+  // Contagem regressiva de 10s no pódio com reinício automático
   useEffect(() => {
     if (!isFinished) return;
 
@@ -121,7 +157,6 @@ export default function App() {
       setPodiumCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(podiumTimer);
-          // Reinicia automaticamente corrida e lista do zero
           handleResetRace();
           return 10;
         }
@@ -132,7 +167,7 @@ export default function App() {
     return () => clearInterval(podiumTimer);
   }, [isFinished]);
 
-  // Reset Race (novo ciclo de 90s)
+  // Reset Race
   const handleResetRace = () => {
     setCars((prev) =>
       prev.map((car, idx) => ({
@@ -154,76 +189,15 @@ export default function App() {
     setTimeLeft(RACE_DURATION);
     setIsFinished(false);
     setPodiumCountdown(10);
-    addChatMessage('@sistema', '🔥 NOVO RACHA DE 90 SEGUNDOS INICIADO! VALENDO!');
   };
 
-  // ----------------------------------------------------
-  // INTEGRAÇÃO SOCKET.IO EXTERNO
-  // ----------------------------------------------------
-  useEffect(() => {
-    let socket: Socket | null = null;
-    try {
-      socket = io(socketUrl, {
-        transports: ['websocket', 'polling'],
-        timeout: 4000,
-        reconnectionAttempts: 2
-      });
-      socketRef.current = socket;
-
-      socket.on('connect', () => {
-        setSocketConnected(true);
-        addChatMessage('@sistema', `Conectado ao servidor Socket.io (${socketUrl})`);
-      });
-
-      socket.on('disconnect', () => {
-        setSocketConnected(false);
-      });
-
-      socket.on('connect_error', () => {
-        setSocketConnected(false);
-      });
-
-      // Ouvintes de entrada de jogadores
-      socket.on('join', (data: { username: string }) => {
-        if (data && data.username) handleAddCar(data.username);
-      });
-      socket.on('novo_jogador', (data: { username: string }) => {
-        if (data && data.username) handleAddCar(data.username);
-      });
-
-      // Ouvintes de eventos e sabotagens
-      const handleRemoteAction = (action: ActionType, data?: { username?: string }) => {
-        handleTriggerAction(action, data?.username);
-      };
-
-      socket.on('turbo', (data) => handleRemoteAction('TURBO', data));
-      socket.on('nitro', (data) => handleRemoteAction('NITRO', data));
-      socket.on('oil', (data) => handleRemoteAction('OLEO', data));
-      socket.on('oleo', (data) => handleRemoteAction('OLEO', data));
-      socket.on('missile', (data) => handleRemoteAction('MISSEL', data));
-      socket.on('missel', (data) => handleRemoteAction('MISSEL', data));
-      socket.on('bomba', (data) => handleRemoteAction('MISSEL', data));
-      socket.on('shield', (data) => handleRemoteAction('ESCUDO', data));
-      socket.on('escudo', (data) => handleRemoteAction('ESCUDO', data));
-      socket.on('reset', () => handleResetRace());
-    } catch {
-      setSocketConnected(false);
-    }
-
-    return () => {
-      if (socket) socket.disconnect();
-    };
-  }, [socketUrl]);
-
-  // Action Handler
-  const handleTriggerAction = (actionType: ActionType, targetCarIdOrName?: string) => {
-    if (isFinished) return; // não permite ações com tempo zerado
+  // Disparo de ação
+  const handleTriggerAction = (actionType: ActionType, targetUsername?: string) => {
+    if (isFinished) return;
 
     setCars((prevCars) => {
       let targetCar = prevCars.find(
-        (c) =>
-          c.id === targetCarIdOrName ||
-          c.username.toLowerCase() === targetCarIdOrName?.toLowerCase()
+        (c) => c.username.toLowerCase() === targetUsername?.toLowerCase()
       );
       if (!targetCar && prevCars.length > 0) {
         if (actionType === 'MISSEL' || actionType === 'OLEO') {
@@ -237,12 +211,11 @@ export default function App() {
         prevCars,
         actionType,
         targetCar?.username,
-        '@streamer'
+        targetUsername || '@live'
       );
 
       if (targetCar) {
-        addGiftToast(targetCar.username, `${actionType} ativado!`, icon, actionType);
-        addChatMessage('@live', message);
+        addGiftToast(targetCar.username, `${actionType}!`, icon, actionType);
       }
 
       return updatedCars;
@@ -267,29 +240,20 @@ export default function App() {
 
     setTimeout(() => {
       setGiftToasts((prev) => prev.filter((t) => t.id !== newToast.id));
-    }, 3200);
+    }, 3000);
   };
 
-  const addChatMessage = (username: string, comment: string) => {
-    const newMsg: LiveComment = {
-      id: `chat_${Date.now()}_${Math.random()}`,
-      username,
-      comment
-    };
-    setChatFeed((prev) => [...prev.slice(-5), newMsg]);
-  };
-
-  // Add Participant (Suporte até 12 carros simultâneos)
-  const handleAddCar = (username: string) => {
+  const handleAddCar = (username: string, customColor?: string) => {
     setCars((prev) => {
-      if (prev.length >= 12) {
-        addChatMessage('@sistema', 'Grid cheio! Máximo 12 carros.');
-        return prev;
-      }
+      if (prev.length >= 12) return prev;
+      const cleanName = username.startsWith('@') ? username : `@${username}`;
+      // Não duplica se já existir
+      if (prev.some((c) => c.username.toLowerCase() === cleanName.toLowerCase())) return prev;
+
       const newCar: Car = {
         id: `car_${Date.now()}_${Math.random()}`,
-        username,
-        color: CAR_COLORS[prev.length % CAR_COLORS.length],
+        username: cleanName,
+        color: customColor || CAR_COLORS[prev.length % CAR_COLORS.length],
         secondaryColor: '#ffffff',
         lane: prev.length % 6,
         targetLane: prev.length % 6,
@@ -310,135 +274,31 @@ export default function App() {
         model: 'gt',
         finished: false
       };
-      addChatMessage(username, 'Entrou na corrida! 🏁');
       return [...prev, newCar];
     });
   };
 
-  // Automatic TikTok Live simulation
-  useEffect(() => {
-    if (!autoSimulate || isFinished) return;
-
-    const interval = setInterval(() => {
-      const actions: ActionType[] = ['TURBO', 'NITRO', 'OLEO', 'MISSEL', 'ESCUDO'];
-      const action = actions[Math.floor(Math.random() * actions.length)];
-      const sampleViewers = ['@ana_games', '@pedro_live', '@carlos_v8', '@bianca_speed', '@torcida_tiktok', '@marcos_nitro'];
-      const randomViewer = sampleViewers[Math.floor(Math.random() * sampleViewers.length)];
-
-      handleTriggerAction(action);
-      addChatMessage(randomViewer, `Bora acelerar! 🔥 Enviou ${action}`);
-    }, 4500);
-
-    return () => clearInterval(interval);
-  }, [autoSimulate, isFinished]);
-
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col font-sans">
-      {/* Top Navbar */}
-      <header className="h-14 border-b border-slate-800 bg-slate-950/80 px-4 md:px-8 flex items-center justify-between backdrop-blur-md sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-rose-500 to-amber-500 flex items-center justify-center font-black text-white text-base shadow-lg shadow-rose-500/20">
-            🏁
-          </div>
-          <div>
-            <h1 className="font-extrabold text-sm md:text-base text-white tracking-tight flex items-center gap-2">
-              <span>Racha TikTok Live</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                CICLO 90S • 12 CARROS
-              </span>
-            </h1>
-          </div>
-        </div>
+    <div className="fixed inset-0 w-screen h-screen bg-[#070a12] flex items-center justify-center overflow-hidden select-none">
+      {/* Container Tela Cheia Otimizado para iPhone e Live Stream (100vh / 100vw) */}
+      <div className="relative w-full h-full max-w-[480px] flex flex-col justify-between overflow-hidden bg-[#070a12] shadow-2xl">
+        <RaceCanvas
+          cars={cars}
+          raceDuration={RACE_DURATION}
+          timeLeft={timeLeft}
+          isFinished={isFinished}
+          soundEnabled={true}
+        />
 
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs">
-            <button
-              onClick={() => setViewMode('split')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-medium transition-all ${
-                viewMode === 'split' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Monitor className="w-3.5 h-3.5" />
-              <span>Estúdio & Celular</span>
-            </button>
-            <button
-              onClick={() => setViewMode('phone_only')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-medium transition-all ${
-                viewMode === 'phone_only' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>Apenas Celular (9:16)</span>
-            </button>
-          </div>
-
-          <button
-            onClick={() => setIsCodeModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs shadow-md shadow-cyan-600/20 transition-all cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Ver Código HTML</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-3 md:p-6 flex flex-col lg:flex-row gap-6 items-start justify-center">
-        {/* Left/Center: Vertical Phone Container (9:16 aspect ratio) */}
-        <div className="w-full flex justify-center shrink-0 lg:w-auto">
-          <div className="relative w-full max-w-[420px] h-[740px] rounded-[36px] bg-slate-950 p-2.5 shadow-[0_0_50px_rgba(0,0,0,0.8)] border-[6px] border-slate-800 flex flex-col overflow-hidden">
-            {/* Live Racing Game Screen */}
-            <div className="relative w-full h-full rounded-[24px] overflow-hidden bg-[#070a12]">
-              <RaceCanvas
-                cars={cars}
-                raceDuration={RACE_DURATION}
-                timeLeft={timeLeft}
-                isFinished={isFinished}
-                soundEnabled={soundEnabled}
-              />
-
-              <LiveOverlay
-                cars={cars}
-                raceDuration={RACE_DURATION}
-                timeLeft={timeLeft}
-                isFinished={isFinished}
-                podiumCountdown={podiumCountdown}
-                giftToasts={giftToasts}
-                chatFeed={chatFeed}
-                onResetRace={handleResetRace}
-                socketConnected={socketConnected}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Streamer Control Dock */}
-        {viewMode === 'split' && (
-          <div className="w-full flex-1 max-w-xl">
-            <StreamerControlPanel
-              cars={cars}
-              onTriggerAction={(action, targetId) => handleTriggerAction(action, targetId)}
-              onAddCar={handleAddCar}
-              onResetCars={initCarsList}
-              onResetRace={handleResetRace}
-              soundEnabled={soundEnabled}
-              onToggleSound={() => setSoundEnabled(!soundEnabled)}
-              autoSimulate={autoSimulate}
-              onToggleAutoSimulate={() => setAutoSimulate(!autoSimulate)}
-              socketUrl={socketUrl}
-              onUpdateSocketUrl={setSocketUrl}
-              socketConnected={socketConnected}
-              onOpenCodeModal={() => setIsCodeModalOpen(true)}
-            />
-          </div>
-        )}
-      </main>
-
-      {/* Code Modal with the complete Standalone Single-File HTML */}
-      <CodeExportModal
-        isOpen={isCodeModalOpen}
-        onClose={() => setIsCodeModalOpen(false)}
-      />
+        <LiveOverlay
+          cars={cars}
+          raceDuration={RACE_DURATION}
+          timeLeft={timeLeft}
+          isFinished={isFinished}
+          podiumCountdown={podiumCountdown}
+          giftToasts={giftToasts}
+        />
+      </div>
     </div>
   );
 }

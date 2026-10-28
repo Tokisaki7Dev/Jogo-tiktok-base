@@ -15,36 +15,29 @@
       -webkit-user-select: none;
     }
 
-    body {
+    html, body {
+      width: 100%;
+      height: 100%;
       background-color: #070a12;
       color: #ffffff;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
-      overflow-x: hidden;
-      overflow-y: auto;
-      padding: 10px;
-      gap: 8px;
+      overflow: hidden;
     }
 
-    /* Formato Vertical 9:16 Otimizado para TikTok Live e OBS */
+    /* Container Tela Cheia Otimizado para iPhone / OBS / Vercel (100vh / 100vw) */
     #liveContainer {
       position: relative;
       width: 100vw;
-      height: min(780px, calc(100vh - 75px));
-      max-width: 440px;
-      aspect-ratio: 9 / 16;
-      background: #090d16;
-      box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.85);
-      border-radius: 24px;
+      height: 100vh;
+      max-width: 480px;
+      background: #070a12;
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      border: 4px solid #1e293b;
-      flex-shrink: 0;
     }
 
     #gameCanvas {
@@ -73,26 +66,27 @@
     .top-section {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
+      width: 100%;
     }
 
     /* Banner TikTok Live: CAIXA ALTA & NEON */
     .banner-instruction {
       background: linear-gradient(135deg, rgba(238, 29, 82, 0.95), rgba(147, 51, 234, 0.95), rgba(6, 182, 212, 0.95));
-      padding: 7px 12px;
-      border-radius: 14px;
-      box-shadow: 0 0 25px rgba(238, 29, 82, 0.55);
+      padding: 10px 14px;
+      border-radius: 16px;
+      box-shadow: 0 0 30px rgba(238, 29, 82, 0.65);
       backdrop-filter: blur(8px);
-      border: 1.5px solid rgba(255, 255, 255, 0.35);
+      border: 2px solid rgba(255, 255, 255, 0.35);
       text-align: center;
     }
 
     .banner-instruction .title {
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 900;
-      letter-spacing: 0.6px;
+      letter-spacing: 0.8px;
       text-transform: uppercase;
-      text-shadow: 0 0 10px rgba(255, 255, 255, 0.9);
+      text-shadow: 0 0 14px rgba(255, 255, 255, 0.95);
       color: #fff;
       animation: pulseText 2s infinite alternate;
     }
@@ -102,19 +96,12 @@
       100% { text-shadow: 0 0 14px rgba(255,255,255,1), 0 0 25px rgba(6,182,212,1); }
     }
 
-    .banner-instruction .subtitle {
-      font-size: 9.5px;
-      font-weight: 700;
-      color: #67e8f9;
-      margin-top: 1px;
-    }
-
-    /* Temporizador de Contagem Regressiva 90s */
+    /* Temporizador de Contagem Regressiva 90s + Contador de Distância */
     .race-timer-wrapper {
       background: rgba(11, 15, 25, 0.92);
       border: 1px solid rgba(6, 182, 212, 0.35);
       border-radius: 16px;
-      padding: 6px 12px;
+      padding: 8px 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -123,16 +110,17 @@
     }
 
     .timer-display {
-      font-size: 17px;
+      font-size: 19px;
       font-weight: 900;
       font-family: monospace;
       color: #ffffff;
       text-shadow: 0 0 10px rgba(6, 182, 212, 0.8);
+      letter-spacing: 1px;
     }
 
     .timer-display.urgent {
       color: #f43f5e;
-      text-shadow: 0 0 12px rgba(244, 63, 94, 0.9);
+      text-shadow: 0 0 14px rgba(244, 63, 94, 0.95);
       animation: bounceUrgent 0.8s infinite alternate;
     }
 
@@ -143,18 +131,19 @@
 
     .progress-bar-bg {
       flex: 1;
-      height: 7px;
+      height: 8px;
       background: #1e293b;
       border-radius: 4px;
       overflow: hidden;
-      margin-left: 12px;
+      margin-left: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .progress-bar-fill {
       height: 100%;
       width: 100%;
       background: linear-gradient(90deg, #10b981, #06b6d4, #f59e0b);
-      box-shadow: 0 0 10px rgba(6, 182, 212, 0.7);
+      box-shadow: 0 0 12px rgba(6, 182, 212, 0.8);
       transition: width 0.2s linear;
     }
 
@@ -162,8 +151,8 @@
     .leaderboard-card {
       background: rgba(11, 15, 25, 0.92);
       border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 14px;
-      padding: 7px 10px;
+      border-radius: 16px;
+      padding: 8px 12px;
       backdrop-filter: blur(10px);
       box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     }
@@ -173,8 +162,8 @@
       text-transform: uppercase;
       font-weight: 900;
       letter-spacing: 0.8px;
-      color: #94a3b8;
-      margin-bottom: 5px;
+      color: #f59e0b;
+      margin-bottom: 6px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -183,7 +172,7 @@
     .leaderboard-list {
       display: flex;
       flex-direction: column;
-      gap: 3px;
+      gap: 3.5px;
     }
 
     .leader-row {
@@ -192,8 +181,8 @@
       justify-content: space-between;
       font-size: 11px;
       font-weight: 600;
-      padding: 3px 6px;
-      border-radius: 6px;
+      padding: 3.5px 7px;
+      border-radius: 7px;
       background: rgba(255, 255, 255, 0.04);
       border-left: 3px solid transparent;
     }
@@ -218,7 +207,7 @@
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
-      max-width: 140px;
+      max-width: 145px;
     }
 
     .badge-pos {
@@ -230,9 +219,10 @@
       font-variant-numeric: tabular-nums;
       font-size: 10px;
       color: #38bdf8;
+      font-weight: 700;
     }
 
-    /* Toasts de Ações e Chat */
+    /* Toasts de Ações */
     .gift-toast-container {
       position: absolute;
       left: 12px;
@@ -263,94 +253,6 @@
       100% { opacity: 0; transform: translateY(-20px); }
     }
 
-    .chat-container {
-      max-height: 85px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-
-    .chat-bubble {
-      font-size: 10px;
-      background: rgba(0, 0, 0, 0.65);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-      padding: 3px 9px;
-      display: inline-block;
-      width: fit-content;
-      max-width: 90%;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      backdrop-filter: blur(4px);
-    }
-
-    .chat-user {
-      font-weight: 800;
-      color: #67e8f9;
-      margin-right: 4px;
-    }
-
-    /* Painel do Streamer / Dev (Posicionado na parte inferior, fora da área de transmissão) */
-    .streamer-bottom-dock {
-      width: 100%;
-      max-width: 450px;
-      background: rgba(11, 15, 25, 0.95);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 14px;
-      padding: 8px 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      flex-wrap: wrap;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(10px);
-      z-index: 10;
-    }
-
-    .btn-dock {
-      background: rgba(30, 41, 59, 0.9);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #fff;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 5px 10px;
-      border-radius: 7px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .btn-dock:hover {
-      background: rgba(51, 65, 85, 1);
-    }
-
-    .btn-dock-action {
-      font-size: 10px;
-      font-weight: 800;
-      padding: 5px 9px;
-      border-radius: 7px;
-      border: none;
-      cursor: pointer;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      gap: 3px;
-      transition: transform 0.1s;
-    }
-
-    .btn-dock-action:active {
-      transform: scale(0.95);
-    }
-
-    .dock-divider {
-      width: 1px;
-      height: 18px;
-      background: rgba(255, 255, 255, 0.15);
-      margin: 0 2px;
-    }
-
     /* PÓDIO DA RODADA (10 SEGUNDOS OVERLAY) */
     #victoryModal {
       position: absolute;
@@ -372,11 +274,11 @@
 
     .podium-grid {
       display: grid;
-      grid-template-columns: 1fr 1.1fr 1fr;
+      grid-template-columns: 1fr 1.15fr 1fr;
       gap: 8px;
       width: 100%;
       max-width: 380px;
-      margin: 12px 0 16px 0;
+      margin: 14px 0 18px 0;
       align-items: flex-end;
     }
 
@@ -394,65 +296,66 @@
       background: linear-gradient(180deg, rgba(234, 179, 8, 0.25), rgba(15, 23, 42, 0.95));
       border: 2px solid #eab308;
       box-shadow: 0 0 25px rgba(234, 179, 8, 0.4);
-      padding: 14px 6px;
+      padding: 16px 6px;
     }
 
     .countdown-banner {
       background: rgba(15, 23, 42, 0.9);
       border: 1px solid rgba(6, 182, 212, 0.4);
       border-radius: 12px;
-      padding: 6px 14px;
+      padding: 8px 16px;
       font-size: 11px;
       font-weight: 800;
       color: #67e8f9;
-      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
   </style>
 </head>
 <body>
 
   <div id="liveContainer">
-    <canvas id="gameCanvas" width="450" height="800"></canvas>
+    <!-- Canvas 2D da Corrida -->
+    <canvas id="gameCanvas" width="480" height="850"></canvas>
 
+    <!-- Overlay da Transmissão (Apenas Banner, Timer e Classificação) -->
     <div class="overlay-ui">
       <div class="top-section">
-        <!-- Banner de Chamada do TikTok: CAIXA ALTA & NEON -->
+        <!-- 1. Banner de Chamada do TikTok: CAIXA ALTA & NEON -->
         <div class="banner-instruction">
           <div class="title">⚡ COMENTE QUALQUER COISA PARA ENTRAR NA CORRIDA! ⚡</div>
-          <div class="subtitle">Mande presentes para Turbo e Sabotagem! • 12 Pilotos</div>
         </div>
 
-        <!-- Temporizador 90s em Destaque -->
+        <!-- 2. Temporizador 90s + Contador de Distância -->
         <div class="race-timer-wrapper">
-          <span style="font-size: 11px;">⏱️</span>
+          <span style="font-size: 12px;">⏱️</span>
           <div id="timerText" class="timer-display">01:30</div>
           <div class="progress-bar-bg">
             <div id="progressBarFill" class="progress-bar-fill"></div>
           </div>
         </div>
 
-        <!-- Tabela de Classificação -->
+        <!-- 3. Tabela de Classificação ao Vivo -->
         <div class="leaderboard-card">
           <div class="leaderboard-title">
             <span>CLASSIFICAÇÃO AO VIVO</span>
-            <span id="statusIndicator" style="color: #4ade80;">● ONLINE</span>
+            <span style="font-size: 9px; color: #94a3b8; font-family: monospace;">12 CARROS</span>
           </div>
           <div id="leaderboardList" class="leaderboard-list"></div>
         </div>
       </div>
 
+      <!-- Toasts de Ações -->
       <div id="giftToasts" class="gift-toast-container"></div>
 
-      <div>
-        <div id="chatFeed" class="chat-container">
-          <div class="chat-bubble"><span class="chat-user">@sistema:</span> Digite no chat para participar do racha!</div>
-        </div>
-      </div>
+      <!-- Espaço livre -->
+      <div></div>
     </div>
 
-    <!-- PÓDIO DA RODADA (10 SEGUNDOS) -->
+    <!-- PÓDIO DA RODADA (10 SEGUNDOS COM REINÍCIO AUTOMÁTICO) -->
     <div id="victoryModal">
-      <div style="font-size: 40px; margin-bottom: 4px;">🏆</div>
+      <div style="font-size: 42px; margin-bottom: 4px;">🏆</div>
       <div style="color: #fbbf24; font-size: 11px; font-weight: 900; letter-spacing: 1px;">FINAL DOS 90 SEGUNDOS</div>
       <h2 style="color: #ffffff; font-size: 20px; font-weight: 900; margin: 4px 0 10px 0;">PÓDIO DA RODADA</h2>
 
@@ -466,7 +369,7 @@
 
         <!-- 1º Lugar -->
         <div class="podium-card first" id="podium1">
-          <div style="font-size: 18px;">👑</div>
+          <div style="font-size: 20px;">👑</div>
           <div style="font-weight: 900; color: #eab308; font-size: 13px;">1º CAMPEÃO</div>
           <div id="podium1Name" style="font-weight: 900; font-size: 13px; color: #fff; margin-top: 3px;">@piloto1</div>
           <div id="podium1Dist" style="color: #38bdf8; font-size: 12px; font-weight: 900; font-family: monospace;">0m</div>
@@ -481,41 +384,25 @@
       </div>
 
       <div class="countdown-banner">
-        Reiniciando corrida automaticamente em: <span id="podiumCountdownText">10</span>s
+        <span>🔄</span>
+        <span>Reiniciando corrida automaticamente em: <strong id="podiumCountdownText" style="color: #fff; font-size: 13px;">10</strong>s</span>
       </div>
-
-      <button style="background: #10b981; border:none; color:#fff; font-weight:800; padding:8px 20px; border-radius:10px; cursor:pointer;" onclick="resetRace()">
-        Reiniciar Agora
-      </button>
     </div>
-  </div>
-
-  <!-- Painel Inferior do Streamer / Dev (Fora da tela de transmissão, topo 100% limpo) -->
-  <div class="streamer-bottom-dock">
-    <button id="btnAudioToggle" class="btn-dock">🔊 Som: ON</button>
-    <div class="dock-divider"></div>
-    <button class="btn-dock-action" style="background:#f97316;" onclick="triggerAction('TURBO')">🔥 Turbo</button>
-    <button class="btn-dock-action" style="background:#06b6d4;" onclick="triggerAction('NITRO')">⚡ Nitro</button>
-    <button class="btn-dock-action" style="background:#64748b;" onclick="triggerAction('OLEO')">🛢️ Óleo</button>
-    <button class="btn-dock-action" style="background:#ef4444;" onclick="triggerAction('MISSEL')">🚀 Míssil</button>
-    <button class="btn-dock-action" style="background:#8b5cf6;" onclick="triggerAction('ESCUDO')">🛡️ Escudo</button>
-    <div class="dock-divider"></div>
-    <button class="btn-dock" onclick="addRandomCar()">+ Piloto</button>
-    <button class="btn-dock" onclick="resetRace()">↺ Reset</button>
   </div>
 
   <script>
     // ==========================================
-    // 1. CONEXÃO COM SOCKET.IO EXTERNO
+    // 1. CONEXÃO DIRETA AO BACKEND SOCKET.IO
     // ==========================================
-    const socket = typeof io !== 'undefined' ? io('URL_DO_SEU_BACKEND') : null;
+    const SOCKET_URL = 'https://tiktok-live-backend-39v9.onrender.com';
+    const socket = typeof io !== 'undefined' ? io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+      timeout: 5000,
+      reconnection: true,
+      reconnectionAttempts: Infinity
+    }) : null;
 
     if (socket) {
-      socket.on('connect', () => {
-        const el = document.getElementById('statusIndicator');
-        if (el) el.innerText = '● CONECTADO';
-      });
-
       socket.on('join', (data) => data?.username && addParticipant(data.username, data.color));
       socket.on('novo_jogador', (data) => data?.username && addParticipant(data.username, data.color));
       socket.on('turbo', (data) => handleSocketAction(data, 'TURBO'));
@@ -548,10 +435,9 @@
     // ==========================================
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     const audioCtx = AudioCtx ? new AudioCtx() : null;
-    let audioEnabled = true;
 
     function playSound(type) {
-      if (!audioEnabled || !audioCtx) return;
+      if (!audioCtx) return;
       if (audioCtx.state === 'suspended') audioCtx.resume();
       const t = audioCtx.currentTime;
       try {
@@ -598,17 +484,12 @@
       } catch (e) {}
     }
 
-    document.getElementById('btnAudioToggle').addEventListener('click', () => {
-      audioEnabled = !audioEnabled;
-      document.getElementById('btnAudioToggle').innerText = audioEnabled ? '🔊 Som: ON' : '🔇 Som: OFF';
-    });
-
     // ==========================================
     // 3. MOTOR DA CORRIDA E CICLO DE 90 SEGUNDOS
     // ==========================================
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const RACE_DURATION = 90; // 90 segundos
+    const RACE_DURATION = 90;
     let timeLeft = RACE_DURATION;
     let isFrozen = false;
     let trackScrollY = 0;
@@ -648,7 +529,7 @@
         id: 'c_' + idx,
         username: user,
         color: CAR_COLORS[idx % CAR_COLORS.length],
-        lane: idx % 6, // 6 faixas
+        lane: idx % 6,
         x: 0, y: 0,
         distance: 0,
         speed: 180,
@@ -661,9 +542,12 @@
 
     function addParticipant(username, color) {
       if (cars.length >= 12) return;
+      const cleanName = username.startsWith('@') ? username : `@${username}`;
+      if (cars.some(c => c.username.toLowerCase() === cleanName.toLowerCase())) return;
+
       cars.push({
         id: 'c_' + Date.now(),
-        username: username,
+        username: cleanName,
         color: color || CAR_COLORS[cars.length % CAR_COLORS.length],
         lane: cars.length % 6,
         x: 0, y: 0,
@@ -674,13 +558,6 @@
         spinAngle: 0, driftAngle: 0, badgeOffset: 0,
         rank: cars.length + 1
       });
-      showChat(username, 'Entrou na corrida! 🏁');
-    }
-
-    function addRandomCar() {
-      const names = ['@felipe_drag', '@fernanda_top', '@rodrigo_nitro', '@daniela_rx', '@bruno_asfalto'];
-      const chosen = names[Math.floor(Math.random() * names.length)] + '_' + Math.floor(Math.random() * 99);
-      addParticipant(chosen);
     }
 
     function applyAction(car, type, actor) {
@@ -688,12 +565,12 @@
       if (type === 'TURBO') {
         car.turboTimer = 2.4;
         playSound('turbo');
-        showToast('🔥', `${actor} ativou TURBO em ${car.username}!`);
+        showToast('🔥', `${car.username} ativou TURBO!`);
         floatingTexts.push({ x: car.x, y: car.y - 35, text: '🔥 TURBO!', color: '#f97316', alpha: 1, vy: -25 });
       } else if (type === 'NITRO') {
         car.nitroTimer = 4.8;
         playSound('turbo');
-        showToast('⚡', `${actor} ativou NITRO em ${car.username}!`);
+        showToast('⚡', `${car.username} ativou NITRO!`);
         floatingTexts.push({ x: car.x, y: car.y - 35, text: '⚡ NITRO!', color: '#06b6d4', alpha: 1, vy: -25 });
       } else if (type === 'OLEO') {
         if (car.shieldTimer > 0) {
@@ -701,25 +578,19 @@
           showToast('🛡️', `${car.username} defendeu o ÓLEO!`);
         } else {
           car.oilTimer = 2.5;
-          showToast('🛢️', `${actor} jogou ÓLEO em ${car.username}!`);
+          showToast('🛢️', `${car.username} pegou ÓLEO!`);
           floatingTexts.push({ x: car.x, y: car.y - 35, text: '🛢️ DERRAPOU!', color: '#f59e0b', alpha: 1, vy: -25 });
         }
       } else if (type === 'MISSEL') {
         missiles.push({ targetId: car.id, x: canvas.width / 2, y: canvas.height + 20, progress: 0, angle: 0 });
         playSound('missile');
-        showToast('🚀', `${actor} disparou MÍSSIL em ${car.username}!`);
+        showToast('🚀', `MÍSSIL em ${car.username}!`);
       } else if (type === 'ESCUDO') {
         car.shieldTimer = 5.0;
         playSound('shield');
-        showToast('🛡️', `${actor} deu ESCUDO para ${car.username}!`);
+        showToast('🛡️', `${car.username} ativou ESCUDO!`);
         floatingTexts.push({ x: car.x, y: car.y - 35, text: '🛡️ ESCUDO!', color: '#c084fc', alpha: 1, vy: -25 });
       }
-    }
-
-    function triggerAction(type) {
-      if (cars.length === 0 || isFrozen) return;
-      const leader = cars.reduce((max, c) => c.distance > max.distance ? c : max, cars[0]);
-      applyAction(leader, type, '@streamer');
     }
 
     function showToast(icon, text) {
@@ -727,22 +598,12 @@
       if (!c) return;
       const t = document.createElement('div');
       t.className = 'gift-toast';
-      t.innerHTML = `<span>${icon}</span><span>${text}</span>`;
+      t.innerHTML = `<span>${icon}</span><span style="font-size:11px; font-weight:800;">${text}</span>`;
       c.appendChild(t);
-      setTimeout(() => t.remove(), 3000);
+      setTimeout(() => t.remove(), 2800);
     }
 
-    function showChat(user, msg) {
-      const f = document.getElementById('chatFeed');
-      if (!f) return;
-      const b = document.createElement('div');
-      b.className = 'chat-bubble';
-      b.innerHTML = `<span class="chat-user">${user}:</span> ${msg}`;
-      f.appendChild(b);
-      if (f.childNodes.length > 5) f.removeChild(f.firstChild);
-    }
-
-    // Loop do Cronômetro de 90s
+    // Cronômetro 90s
     setInterval(() => {
       if (isFrozen) return;
       if (timeLeft > 0) {
@@ -774,7 +635,6 @@
       playSound('win');
       cars.sort((a, b) => b.distance - a.distance);
 
-      // Exibe Pódio da Rodada
       const modal = document.getElementById('victoryModal');
       if (modal) {
         if (cars[0]) {
@@ -792,7 +652,6 @@
         modal.classList.add('show');
       }
 
-      // Contagem de 10s para reiniciar automaticamente
       podiumCountdown = 10;
       document.getElementById('podiumCountdownText').innerText = podiumCountdown;
       clearInterval(podiumInterval);
@@ -833,7 +692,6 @@
       particles = [];
       missiles = [];
       floatingTexts = [];
-      showChat('@sistema', '🔥 NOVO RACHA DE 90 SEGUNDOS INICIADO! VALENDO!');
     }
 
     // ==========================================
@@ -1071,7 +929,7 @@
       const w = 22;
       const h = 46;
 
-      // Facho de luz volumétrico dos faróis
+      // Facho de faróis
       const hGrad = ctx.createLinearGradient(0, -h/2, 0, -h/2 - 100);
       hGrad.addColorStop(0, 'rgba(254, 240, 138, 0.35)');
       hGrad.addColorStop(1, 'rgba(254, 240, 138, 0)');
@@ -1132,7 +990,7 @@
       ctx.fillRect(-w/2 + 4, -h/2 + 22, w - 8, 11);
       ctx.fillRect(-w/2 - 1, h/2 - 5, w + 2, 3.5);
 
-      // Faróis dianteiros e traseiros
+      // Faróis
       ctx.fillStyle = '#fef08a';
       ctx.fillRect(-w/2 + 2, -h/2, 4.5, 2);
       ctx.fillRect(w/2 - 6.5, -h/2, 4.5, 2);
