@@ -1,6 +1,6 @@
 {
   "name": "Racha de Carros TikTok Live",
-  "description": "Jogo de Racha de Carros 2D vertical em HTML5 Canvas otimizado para transmissões TikTok Live com eventos em tempo real, suporte para 10 carros e integração Socket.io.",
+  "description": "Jogo de Racha de Carros 3D vertical em Three.js otimizado para transmissões TikTok Live com eventos em tempo real, suporte para 20 carros e integração WebSocket.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
