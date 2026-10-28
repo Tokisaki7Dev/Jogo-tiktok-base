@@ -12,9 +12,6 @@
   <meta name="theme-color" content="#04060d" />
   <meta name="description" content="Jogo de Racha de Carros 2D HD em HTML5 Canvas otimizado para TikTok Live @Tokisaki7_, integrado ao Render e Vercel." />
 
-  <!-- Socket.io CDN Oficial para conexão com Render -->
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-
   <style>
     * {
       box-sizing: border-box;
@@ -37,7 +34,6 @@
       align-items: center;
     }
 
-    /* Container Principal 100vh / 100vw otimizado para iPhone, OBS e Vercel */
     #gameContainer {
       position: relative;
       width: 100vw;
@@ -50,7 +46,6 @@
       flex-direction: column;
     }
 
-    /* Canvas 2D Retina Display */
     #raceCanvas {
       position: absolute;
       top: 0;
@@ -62,7 +57,6 @@
       background: #080c18;
     }
 
-    /* Overlays do HUD */
     #hudOverlay {
       position: absolute;
       inset: 0;
@@ -81,7 +75,6 @@
       width: 100%;
     }
 
-    /* Barra Superior com Badge de Live e Conexão */
     .top-status-bar {
       display: flex;
       justify-content: space-between;
@@ -145,7 +138,6 @@
       animation: pulseDot 1s infinite alternate;
     }
 
-    /* BANNER GLASSMORPHISM NEON */
     .glass-banner {
       background: rgba(8, 14, 28, 0.84);
       backdrop-filter: blur(12px);
@@ -178,7 +170,6 @@
       100% { filter: drop-shadow(0 0 12px rgba(0, 255, 204, 0.95)); }
     }
 
-    /* Grid de Moedas Rebalanceado (Preços Atualizados) */
     .coins-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -214,7 +205,6 @@
       text-shadow: 0 0 5px rgba(0, 255, 204, 0.6);
     }
 
-    /* Barra de Progresso e Temporizador 90s */
     .race-status-bar {
       display: flex;
       align-items: center;
@@ -268,7 +258,6 @@
       transition: width 0.3s linear;
     }
 
-    /* Leaderboard Top 5 ao Vivo */
     .leaderboard-panel {
       background: rgba(8, 14, 28, 0.82);
       backdrop-filter: blur(10px);
@@ -324,7 +313,6 @@
       font-size: 9.5px;
     }
 
-    /* Notificações Flutuantes (Toasts) */
     .toast-container {
       position: absolute;
       bottom: 20px;
@@ -356,7 +344,6 @@
       to { transform: translateX(0); opacity: 1; }
     }
 
-    /* Modal do Pódio da Rodada (10s) */
     .podium-modal {
       position: absolute;
       inset: 0;
@@ -429,13 +416,10 @@
 </head>
 <body>
   <div id="gameContainer">
-    <!-- Canvas 2D Retina Otimizado 60 FPS -->
     <canvas id="raceCanvas"></canvas>
 
-    <!-- Overlay do HUD -->
     <div id="hudOverlay">
       <div class="top-section">
-        <!-- Status Superior -->
         <div class="top-status-bar">
           <div class="live-tag">
             <span class="live-tag-dot"></span> LIVE TIKTOK @Tokisaki7_
@@ -446,13 +430,11 @@
           </div>
         </div>
 
-        <!-- BANNER GLASSMORPHISM NEON -->
         <div class="glass-banner">
           <div class="banner-title">
             💬 COMENTE PRA ENTRAR • 🟢 CURTA PRA EMPURRAR
           </div>
 
-          <!-- Grid de Moedas (Preços Atualizados) -->
           <div class="coins-grid">
             <div class="coin-badge">
               <span class="name">⚡ TURBO</span>
@@ -481,7 +463,6 @@
           </div>
         </div>
 
-        <!-- Temporizador 90s + Barra de Progresso + Contagem de Carros -->
         <div class="race-status-bar">
           <div class="timer-display" id="timerDisplay">
             <span>⏱️</span> <span id="timerText">01:30</span>
@@ -494,7 +475,6 @@
           </div>
         </div>
 
-        <!-- Tabela de Classificação Top 5 -->
         <div class="leaderboard-panel">
           <div class="leaderboard-header">
             <span>🏆 CLASSIFICAÇÃO AO VIVO</span>
@@ -504,11 +484,9 @@
         </div>
       </div>
 
-      <!-- Toasts de Notificações -->
       <div class="toast-container" id="toastContainer"></div>
     </div>
 
-    <!-- Modal do Pódio -->
     <div class="podium-modal" id="podiumModal">
       <div class="podium-box">
         <div class="podium-heading">🏆 PÓDIO DA RODADA 🏆</div>
@@ -544,9 +522,97 @@
 
     const MAX_CARS = 20;
     const RACE_DURATION = 90;
-    const SOCKET_URL = 'https://tiktok-live-backend-39v9.onrender.com';
-    const LANE_COUNT = 6;
+    const BACKEND_URL = 'wss://climbing-while-ear-ton.trycloudflare.com/';
+    const SOCKET_URL = BACKEND_URL;
+    let socket = null;
+    let reconnectTimer = null;
 
+    function initConnection() {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      
+      socket = new WebSocket(BACKEND_URL);
+
+      socket.onopen = () => {
+        setOnline(true);
+      };
+
+      socket.onclose = () => {
+        setOnline(false);
+        reconnectTimer = setTimeout(initConnection, 5000);
+      };
+
+      socket.onerror = () => {
+        setOnline(false);
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          switch (data.type) {
+            case 'like':
+              handleLikeEvent(data.username);
+              break;
+            case 'gift':
+              handleGiftEvent(data.username, data.coins || data.totalCoins || 1);
+              break;
+            case 'chat':
+            case 'join':
+            case 'novo_jogador':
+              if (data.username) addParticipant(data.username, data.color);
+              break;
+            case 'turbo':
+              applyTurbo(cars.find(c => c.username === data.username) || cars[0]);
+              break;
+            case 'nitro':
+              applyNitro(cars.find(c => c.username === data.username) || cars[0]);
+              break;
+            case 'oleo':
+            case 'oil':
+              applyOil(cars.find(c => c.username === data.username) || cars[0]);
+              break;
+            case 'missel':
+            case 'missile':
+              applyMissile(cars.find(c => c.username === data.username) || cars[0]);
+              break;
+            case 'escudo':
+            case 'shield':
+              applyShield(cars.find(c => c.username === data.username) || cars[0]);
+              break;
+            case 'bomba':
+            case 'bomb':
+              applyBomb(cars.find(c => c.username === data.username) || cars[0]);
+              break;
+            case 'reset':
+              resetRace();
+              break;
+          }
+        } catch (e) {
+          console.error("Erro ao processar mensagem do WebSocket:", e);
+        }
+      };
+    }
+
+    initConnection();
+
+    function updateTimerUI() {
+      const mins = Math.floor(timeLeft / 60);
+      const secs = timeLeft % 60;
+      const str = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      const el = document.getElementById('timerText');
+      const disp = document.getElementById('timerDisplay');
+      if (el) el.innerText = str;
+      if (disp) {
+        if (timeLeft <= 15) disp.classList.add('urgent');
+        else disp.classList.remove('urgent');
+      }
+
+      const pct = (timeLeft / RACE_DURATION) * 100;
+      const bar = document.getElementById('progressFill');
+      if (bar) bar.style.width = pct + '%';
+    }
+
+    const LANE_COUNT = 6;
     const CAR_PALETTE = [
       '#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6',
       '#ec4899', '#06b6d4', '#eab308', '#14b8a6', '#f97316',
@@ -570,7 +636,6 @@
     let podiumInterval = null;
     let lastTime = performance.now();
 
-    // Áudio Sintetizado Web Audio API
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
 
@@ -663,7 +728,6 @@
       } catch (e) {}
     }
 
-    // Canvas Retina Display Setup
     const canvas = document.getElementById('raceCanvas');
     const ctx = canvas.getContext('2d');
     let dpr = window.devicePixelRatio || 1;
@@ -695,25 +759,18 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // FIFO MAX 20 Cars
     function addParticipant(username, colorHex = null) {
       if (!username) return;
       const cleanName = username.startsWith('@') ? username : `@${username}`;
-
       const existing = cars.find(c => c.username.toLowerCase() === cleanName.toLowerCase());
       if (existing) {
         existing.speed = Math.min(existing.speed + 15, 380);
         return existing;
       }
-
-      if (cars.length >= MAX_CARS) {
-        cars.shift(); // Remove o mais antigo
-      }
-
+      if (cars.length >= MAX_CARS) cars.shift();
       const carIndex = cars.length;
       const color = colorHex || CAR_PALETTE[carIndex % CAR_PALETTE.length];
       const lane = carIndex % LANE_COUNT;
-
       const newCar = {
         id: `c_${Date.now()}_${Math.random()}`,
         username: cleanName,
@@ -734,7 +791,6 @@
         driftAngle: 0,
         badgeOffset: (carIndex % 3) * 16
       };
-
       cars.push(newCar);
       updateCarsCountUI();
       return newCar;
@@ -747,16 +803,12 @@
       if (el) el.innerText = `${cars.length}/${MAX_CARS} Carros`;
     }
 
-    // Lógica da Live (Likes e Moedas)
     function handleLikeEvent(username) {
       if (isFrozen) return;
       playSound('like');
       const cleanName = username ? (username.startsWith('@') ? username : `@${username}`) : null;
       let car = cleanName ? cars.find(c => c.username.toLowerCase() === cleanName.toLowerCase()) : null;
-      if (!car && cars.length > 0) {
-        car = addParticipant(cleanName || '@curtidor');
-      }
-
+      if (!car && cars.length > 0) car = addParticipant(cleanName || '@curtidor');
       if (car) {
         car.speed = Math.min(car.speed + 12, 380);
         showToast('💚', `${car.username} curtiu e empurrou o carro!`);
@@ -768,12 +820,8 @@
       if (isFrozen) return;
       const cleanName = username ? (username.startsWith('@') ? username : `@${username}`) : '@espectador';
       let car = cars.find(c => c.username.toLowerCase() === cleanName.toLowerCase());
-      if (!car) {
-        car = addParticipant(cleanName);
-      }
-
+      if (!car) car = addParticipant(cleanName);
       const coins = Number(totalCoins || 1);
-
       if (coins >= 100) applyBomb(car);
       else if (coins >= 50) applyShield(car);
       else if (coins >= 25) applyMissile(car);
@@ -800,7 +848,6 @@
       playSound('oil');
       const aheadCars = cars.filter(c => c.distance > car.distance).sort((a, b) => a.distance - b.distance);
       const target = aheadCars[0] || (cars.length > 1 ? cars[0] : car);
-
       if (target.shieldTimer > 0) {
         playSound('shield');
         showToast('🛡️', `${target.username} defendeu o ÓLEO com ESCUDO!`);
@@ -817,7 +864,6 @@
       const sorted = [...cars].sort((a, b) => b.distance - a.distance);
       const leader = sorted[0] || car;
       showToast('🚀', `${car.username} disparou MÍSSIL no líder ${leader.username}! (25-49 Moedas)`);
-
       missiles.push({ x: car.x, y: car.y, targetId: leader.id, speed: 480 });
     }
 
@@ -832,14 +878,12 @@
       playSound('bomb');
       showToast('💣', `${car.username} detonou BOMBA EM ÁREA! (100+ Moedas)`);
       spawnExplosion(car.x, car.y);
-
       cars.forEach(other => {
         if (other !== car) {
           const dist = Math.hypot(other.x - car.x, other.y - car.y);
           if (dist < 120) {
-            if (other.shieldTimer > 0) {
-              playSound('shield');
-            } else {
+            if (other.shieldTimer > 0) playSound('shield');
+            else {
               other.stunTimer = 3.5;
               other.speed *= 0.3;
               floatingTexts.push({ x: other.x, y: other.y - 30, text: '💥 ATINGIDO!', color: '#ff3b5c', alpha: 1, vy: -25 });
@@ -864,10 +908,6 @@
       }
     }
 
-    // WebSocket / Render Connection com reconexão a cada 5s
-    const statusDot = document.getElementById('statusDot');
-    const statusText = document.getElementById('statusText');
-
     function setOnline(online) {
       if (online) {
         statusDot.className = 'status-dot status-online';
@@ -878,208 +918,38 @@
       }
     }
 
-    let socket = null;
-    let reconnectTimer = null;
-
-    function initConnection() {
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (typeof io !== 'undefined') {
-        try {
-          socket = io(SOCKET_URL, {
-            transports: ['websocket', 'polling'],
-            timeout: 5000,
-            reconnection: false
-          });
-
-          socket.on('connect', () => setOnline(true));
-          socket.on('disconnect', () => {
-            setOnline(false);
-            reconnectTimer = setTimeout(initConnection, 5000);
-          });
-          socket.on('connect_error', () => {
-            setOnline(false);
-            reconnectTimer = setTimeout(initConnection, 5000);
-          });
-
-          socket.on('like', (data) => handleLikeEvent(data?.username));
-          socket.on('gift', (data) => handleGiftEvent(data?.username, data?.coins || data?.totalCoins || 1));
-          socket.on('chat', (data) => data?.username && addParticipant(data.username, data.color));
-          socket.on('join', (data) => data?.username && addParticipant(data.username, data.color));
-          socket.on('novo_jogador', (data) => data?.username && addParticipant(data.username, data.color));
-
-          socket.on('turbo', (data) => applyTurbo(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('nitro', (data) => applyNitro(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('oleo', (data) => applyOil(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('oil', (data) => applyOil(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('missel', (data) => applyMissile(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('missile', (data) => applyMissile(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('escudo', (data) => applyShield(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('shield', (data) => applyShield(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('bomba', (data) => applyBomb(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('bomb', (data) => applyBomb(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('reset', () => resetRace());
-        } catch (e) {
-          setOnline(false);
-          reconnectTimer = setTimeout(initConnection, 5000);
-        }
-      } else {
-        setOnline(false);
-        reconnectTimer = setTimeout(initConnection, 5000);
-      }
-    }
-
-    initConnection();
-
-    function showToast(icon, text) {
-      const container = document.getElementById('toastContainer');
-      if (!container) return;
-      const toast = document.createElement('div');
-      toast.className = 'toast-item';
-      toast.innerHTML = `<span>${icon}</span> <span>${text}</span>`;
-      container.appendChild(toast);
-      setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(-10px)';
-        toast.style.transition = 'all 0.35s ease';
-        setTimeout(() => toast.remove(), 350);
-      }, 3000);
-    }
-
-    // Cronômetro 90s + Pódio 10s
-    setInterval(() => {
-      if (isFrozen) return;
-      if (timeLeft > 0) {
-        timeLeft--;
-        updateTimerUI();
-        if (timeLeft <= 0) triggerFinish();
-      }
-    }, 1000);
-
-    function updateTimerUI() {
-      const mins = Math.floor(timeLeft / 60);
-      const secs = timeLeft % 60;
-      const str = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-      const el = document.getElementById('timerText');
-      const disp = document.getElementById('timerDisplay');
-      if (el) el.innerText = str;
-      if (disp) {
-        if (timeLeft <= 15) disp.classList.add('urgent');
-        else disp.classList.remove('urgent');
-      }
-
-      const pct = (timeLeft / RACE_DURATION) * 100;
-      const bar = document.getElementById('progressFill');
-      if (bar) bar.style.width = pct + '%';
-    }
-
-    function triggerFinish() {
-      isFrozen = true;
-      playSound('turbo');
-      cars.sort((a, b) => b.distance - a.distance);
-
-      const modal = document.getElementById('podiumModal');
-      if (modal) {
-        if (cars[0]) {
-          document.getElementById('podium1').innerText = cars[0].username;
-          document.getElementById('podium1Dist').innerText = `${Math.floor(cars[0].distance)}m`;
-        }
-        if (cars[1]) {
-          document.getElementById('podium2').innerText = cars[1].username;
-          document.getElementById('podium2Dist').innerText = `${Math.floor(cars[1].distance)}m`;
-        }
-        if (cars[2]) {
-          document.getElementById('podium3').innerText = cars[2].username;
-          document.getElementById('podium3Dist').innerText = `${Math.floor(cars[2].distance)}m`;
-        }
-        modal.classList.add('show');
-      }
-
-      let count = 10;
-      const countEl = document.getElementById('podiumCountdown');
-      if (countEl) countEl.innerText = count;
-
-      clearInterval(podiumInterval);
-      podiumInterval = setInterval(() => {
-        count--;
-        if (countEl) countEl.innerText = count;
-        if (count <= 0) {
-          clearInterval(podiumInterval);
-          resetRace();
-        }
-      }, 1000);
-    }
-
-    function resetRace() {
-      const modal = document.getElementById('podiumModal');
-      if (modal) modal.classList.remove('show');
-
-      isFrozen = false;
-      timeLeft = RACE_DURATION;
-      updateTimerUI();
-
-      cars.forEach((c, idx) => {
-        c.distance = 0;
-        c.speed = c.baseSpeed;
-        c.turboTimer = 0;
-        c.nitroTimer = 0;
-        c.oilTimer = 0;
-        c.stunTimer = 0;
-        c.shieldTimer = 0;
-        c.spinAngle = 0;
-        c.driftAngle = 0;
-        c.lane = idx % LANE_COUNT;
-      });
-
-      particles = [];
-      skidMarks = [];
-      missiles = [];
-      floatingTexts = [];
-    }
-
-    // Physics & Render Loop (60 FPS)
     function updatePhysics(dt) {
       if (isFrozen) return;
-
       const roadLeft = 28;
       const roadRight = cssWidth - 28;
       const roadWidth = roadRight - roadLeft;
       const laneWidth = roadWidth / LANE_COUNT;
-
       let maxDist = 0;
       cars.forEach(c => { if (c.distance > maxDist) maxDist = c.distance; });
-
       trackScrollY = (trackScrollY + 22) % 10000;
-
       cars.forEach((car, i) => {
         if (car.turboTimer > 0) car.turboTimer -= dt;
         if (car.nitroTimer > 0) car.nitroTimer -= dt;
         if (car.oilTimer > 0) {
           car.oilTimer -= dt;
           car.spinAngle += dt * 14;
-        } else {
-          car.spinAngle = 0;
-        }
+        } else car.spinAngle = 0;
         if (car.stunTimer > 0) car.stunTimer -= dt;
         if (car.shieldTimer > 0) car.shieldTimer -= dt;
-
         let spd = car.baseSpeed;
         if (car.turboTimer > 0) spd += 130;
         if (car.nitroTimer > 0) spd += 180;
         if (car.oilTimer > 0) spd *= 0.45;
         if (car.stunTimer > 0) spd *= 0.25;
-
         spd += Math.sin(performance.now() * 0.0025 + i * 1.8) * 7;
         car.speed = spd;
         car.distance += (spd / 3.6) * dt;
-
         const targetX = roadLeft + (car.lane + 0.5) * laneWidth;
         const diffX = targetX - car.x;
         car.x += diffX * 0.14;
         car.driftAngle = Math.max(-0.25, Math.min(0.25, diffX * 0.02));
-
         const targetY = (cssHeight * 0.68) - (car.distance - maxDist) * 4.6;
         car.y = Math.max(140, Math.min(cssHeight - 80, targetY));
-
         if (car.turboTimer > 0 || car.nitroTimer > 0) {
           const isNitro = car.nitroTimer > 0;
           particles.push({
@@ -1093,10 +963,8 @@
           });
         }
       });
-
       cars.sort((a, b) => b.distance - a.distance);
       cars.forEach((c, idx) => { c.rank = idx + 1; });
-
       const listEl = document.getElementById('leaderList');
       if (listEl) {
         listEl.innerHTML = cars.slice(0, 5).map(c => `
@@ -1110,7 +978,6 @@
           </div>
         `).join('');
       }
-
       for (let i = missiles.length - 1; i >= 0; i--) {
         const m = missiles[i];
         const target = cars.find(c => c.id === m.targetId) || cars[0];
@@ -1120,19 +987,16 @@
           const angle = Math.atan2(dy, dx);
           m.x += Math.cos(angle) * m.speed * dt;
           m.y += Math.sin(angle) * m.speed * dt;
-
           particles.push({
             x: m.x, y: m.y,
             vx: (Math.random() - 0.5) * 10,
             vy: (Math.random() - 0.5) * 10,
             size: 2.5, color: '#ff3b5c', alpha: 0.7
           });
-
           if (Math.hypot(dx, dy) < 18) {
             missiles.splice(i, 1);
-            if (target.shieldTimer > 0) {
-              playSound('shield');
-            } else {
+            if (target.shieldTimer > 0) playSound('shield');
+            else {
               playSound('bomb');
               target.stunTimer = 3.5;
               target.speed *= 0.25;
@@ -1141,7 +1005,6 @@
           }
         }
       }
-
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.x += p.vx * dt;
@@ -1150,14 +1013,12 @@
         if (p.alpha <= 0) particles.splice(i, 1);
       }
       if (particles.length > 250) particles.splice(0, particles.length - 250);
-
       for (let i = floatingTexts.length - 1; i >= 0; i--) {
         const ft = floatingTexts[i];
         ft.y += ft.vy * dt;
         ft.alpha -= dt * 0.9;
         if (ft.alpha <= 0) floatingTexts.splice(i, 1);
       }
-
       speedLines.forEach(l => {
         l.y += l.speed;
         if (l.y > cssHeight + l.length) {
@@ -1169,13 +1030,10 @@
 
     function render() {
       ctx.clearRect(0, 0, cssWidth, cssHeight);
-
       const roadLeft = 28;
       const roadRight = cssWidth - 28;
       const roadWidth = roadRight - roadLeft;
       const laneWidth = roadWidth / LANE_COUNT;
-
-      // Fundo e Asfalto
       const bgGrad = ctx.createLinearGradient(0, 0, cssWidth, 0);
       bgGrad.addColorStop(0, '#04060d');
       bgGrad.addColorStop(roadLeft / cssWidth, '#0b1122');
@@ -1184,29 +1042,22 @@
       bgGrad.addColorStop(1, '#04060d');
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, cssWidth, cssHeight);
-
       ctx.fillStyle = '#101728';
       ctx.fillRect(roadLeft, 0, roadWidth, cssHeight);
-
-      // Zebras 3D
       const curbWidth = 9;
       const curbSegment = 24;
       for (let y = -curbSegment * 2; y < cssHeight + curbSegment * 2; y += curbSegment) {
         const isRed = Math.floor((y + trackScrollY) / curbSegment) % 2 === 0;
         const curY = y + (trackScrollY % curbSegment);
-
         ctx.fillStyle = isRed ? '#ef4444' : '#f8fafc';
         ctx.fillRect(roadLeft - curbWidth, curY, curbWidth, curbSegment);
         ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         ctx.fillRect(roadLeft - curbWidth, curY + curbSegment - 2, curbWidth, 2);
-
         ctx.fillStyle = isRed ? '#ef4444' : '#f8fafc';
         ctx.fillRect(roadRight, curY, curbWidth, curbSegment);
         ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         ctx.fillRect(roadRight, curY + curbSegment - 2, curbWidth, 2);
       }
-
-      // Linhas das Faixas
       ctx.strokeStyle = 'rgba(0, 255, 204, 0.3)';
       ctx.lineWidth = 1.8;
       ctx.setLineDash([18, 18]);
@@ -1219,8 +1070,6 @@
         ctx.stroke();
       }
       ctx.setLineDash([]);
-
-      // Skid Marks
       skidMarks.forEach((sm, idx) => {
         ctx.strokeStyle = `rgba(0, 0, 0, ${sm.alpha * 0.4})`;
         ctx.lineWidth = 3;
@@ -1233,8 +1082,6 @@
         sm.y += 12;
         if (sm.y > cssHeight + 40) skidMarks.splice(idx, 1);
       });
-
-      // Speed Lines
       if (!isFrozen) {
         speedLines.forEach(l => {
           ctx.strokeStyle = `rgba(0, 255, 204, ${l.alpha * 0.6})`;
@@ -1245,11 +1092,7 @@
           ctx.stroke();
         });
       }
-
-      // Carros
       cars.forEach(car => drawSuperCar(ctx, car));
-
-      // Mísseis
       missiles.forEach(m => {
         ctx.save();
         ctx.translate(m.x, m.y);
@@ -1259,8 +1102,6 @@
         ctx.fill();
         ctx.restore();
       });
-
-      // Partículas
       particles.forEach(p => {
         ctx.save();
         ctx.globalAlpha = Math.max(0, p.alpha);
@@ -1270,8 +1111,6 @@
         ctx.fill();
         ctx.restore();
       });
-
-      // Floating Texts
       floatingTexts.forEach(ft => {
         ctx.save();
         ctx.globalAlpha = Math.max(0, ft.alpha);
@@ -1288,14 +1127,10 @@
     function drawSuperCar(ctx, car) {
       ctx.save();
       ctx.translate(car.x, car.y);
-
       if (car.spinAngle !== 0) ctx.rotate(car.spinAngle);
       else if (car.driftAngle) ctx.rotate(car.driftAngle);
-
       const w = 22;
       const h = 46;
-
-      // Facho de Faróis
       const hGrad = ctx.createLinearGradient(0, -h/2, 0, -h/2 - 110);
       hGrad.addColorStop(0, 'rgba(254, 240, 138, 0.4)');
       hGrad.addColorStop(0.4, 'rgba(254, 240, 138, 0.15)');
@@ -1308,8 +1143,6 @@
       ctx.lineTo(w/2 - 2, -h/2);
       ctx.closePath();
       ctx.fill();
-
-      // Neon Underglow
       const underglowColor = car.turboTimer > 0 ? '#ffd700' : car.nitroTimer > 0 ? '#00ffcc' : car.color;
       const uGrad = ctx.createRadialGradient(0, 0, 4, 0, 0, 34);
       uGrad.addColorStop(0, underglowColor + '77');
@@ -1318,21 +1151,15 @@
       ctx.beginPath();
       ctx.arc(0, 0, 34, 0, Math.PI * 2);
       ctx.fill();
-
-      // Sombra
       ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
       ctx.beginPath();
       ctx.roundRect(-w/2 + 2, -h/2 + 3, w, h + 2, 7);
       ctx.fill();
-
-      // Pneus
       ctx.fillStyle = '#0a0e17';
       ctx.fillRect(-w/2 - 3, -h/2 + 6, 4, 10);
       ctx.fillRect(w/2 - 1, -h/2 + 6, 4, 10);
       ctx.fillRect(-w/2 - 3, h/2 - 16, 4, 11);
       ctx.fillRect(w/2 - 1, h/2 - 16, 4, 11);
-
-      // Chassi Metálico
       const bodyGrad = ctx.createLinearGradient(-w/2, 0, w/2, 0);
       bodyGrad.addColorStop(0, car.color);
       bodyGrad.addColorStop(0.35, '#ffffff44');
@@ -1342,29 +1169,19 @@
       ctx.beginPath();
       ctx.roundRect(-w/2, -h/2, w, h, 7);
       ctx.fill();
-
-      // Faixas de Corrida
       ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
       ctx.fillRect(-2.5, -h/2 + 2, 1.8, h - 8);
       ctx.fillRect(0.7, -h/2 + 2, 1.8, h - 8);
-
-      // Pára-brisa
       ctx.fillStyle = '#38bdf8';
       ctx.fillRect(-w/2 + 3, -h/2 + 12, w - 6, 10);
-
-      // Teto & Aerofólio
       ctx.fillStyle = '#090d16';
       ctx.fillRect(-w/2 + 4, -h/2 + 22, w - 8, 11);
       ctx.fillRect(-w/2 - 1, h/2 - 5, w + 2, 3.5);
-
-      // Faróis & Lanternas
       ctx.fillStyle = '#fef08a';
       ctx.fillRect(-w/2 + 2, -h/2, 4.5, 2);
       ctx.fillRect(w/2 - 6.5, -h/2, 4.5, 2);
       ctx.fillStyle = '#ff3b5c';
       ctx.fillRect(-w/2 + 3, h/2 - 2, w - 6, 2);
-
-      // Escudo Protetor
       if (car.shieldTimer > 0) {
         ctx.strokeStyle = '#c084fc';
         ctx.lineWidth = 2.5;
@@ -1375,19 +1192,14 @@
         ctx.stroke();
         ctx.shadowBlur = 0;
       }
-
       ctx.restore();
-
-      // Tag de Nome (Anti-Sobreposição)
       ctx.save();
       const baseBadgeY = car.y - 36;
       const staggerY = (car.lane % 2 === 1 ? 16 : 0) + (car.badgeOffset || 0);
       const bY = baseBadgeY - staggerY;
-
       ctx.font = 'bold 9.5px sans-serif';
       const badgeText = `${car.rank}º ${car.username}`;
       const textWidth = Math.max(ctx.measureText(badgeText).width + 12, 60);
-
       ctx.fillStyle = 'rgba(8, 14, 28, 0.94)';
       ctx.strokeStyle = car.rank === 1 ? '#ffd700' : car.rank === 2 ? '#e2e8f0' : car.rank === 3 ? '#cd7f32' : '#00ffcc';
       ctx.lineWidth = 1.3;
@@ -1395,7 +1207,6 @@
       ctx.roundRect(car.x - textWidth / 2, bY - 10, textWidth, 17, 8);
       ctx.fill();
       ctx.stroke();
-
       ctx.fillStyle = car.rank === 1 ? '#ffd700' : '#ffffff';
       ctx.textAlign = 'center';
       ctx.fillText(badgeText, car.x, bY + 2);
