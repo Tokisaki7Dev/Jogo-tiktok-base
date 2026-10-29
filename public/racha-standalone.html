@@ -544,7 +544,7 @@
 
     const MAX_CARS = 20;
     const RACE_DURATION = 90;
-    const SOCKET_URL = 'https://tiktok-live-backend-39v9.onrender.com';
+    const BACKEND_URL = 'wss://ais-dev-qgmt23tgf5vgjue5gcbgcr-704964147319.us-east1.run.app';
     const LANE_COUNT = 6;
 
     const CAR_PALETTE = [
@@ -871,10 +871,10 @@
     function setOnline(online) {
       if (online) {
         statusDot.className = 'status-dot status-online';
-        statusText.innerText = '🟢 Online';
+        statusText.innerText = '🟢 Conectado';
       } else {
         statusDot.className = 'status-dot status-offline';
-        statusText.innerText = '🔴 Reconectando...';
+        statusText.innerText = '🔴 Desconectado (Reconectando...)';
       }
     }
 
@@ -883,46 +883,44 @@
 
     function initConnection() {
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (typeof io !== 'undefined') {
-        try {
-          socket = io(SOCKET_URL, {
-            transports: ['websocket', 'polling'],
-            timeout: 5000,
-            reconnection: false
-          });
+      
+      try {
+        socket = new WebSocket(BACKEND_URL);
 
-          socket.on('connect', () => setOnline(true));
-          socket.on('disconnect', () => {
-            setOnline(false);
-            reconnectTimer = setTimeout(initConnection, 5000);
-          });
-          socket.on('connect_error', () => {
-            setOnline(false);
-            reconnectTimer = setTimeout(initConnection, 5000);
-          });
+        socket.onopen = () => {
+          setOnline(true);
+        };
 
-          socket.on('like', (data) => handleLikeEvent(data?.username));
-          socket.on('gift', (data) => handleGiftEvent(data?.username, data?.coins || data?.totalCoins || 1));
-          socket.on('chat', (data) => data?.username && addParticipant(data.username, data.color));
-          socket.on('join', (data) => data?.username && addParticipant(data.username, data.color));
-          socket.on('novo_jogador', (data) => data?.username && addParticipant(data.username, data.color));
-
-          socket.on('turbo', (data) => applyTurbo(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('nitro', (data) => applyNitro(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('oleo', (data) => applyOil(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('oil', (data) => applyOil(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('missel', (data) => applyMissile(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('missile', (data) => applyMissile(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('escudo', (data) => applyShield(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('shield', (data) => applyShield(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('bomba', (data) => applyBomb(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('bomb', (data) => applyBomb(cars.find(c => c.username === data?.username) || cars[0]));
-          socket.on('reset', () => resetRace());
-        } catch (e) {
+        socket.onclose = () => {
           setOnline(false);
           reconnectTimer = setTimeout(initConnection, 5000);
-        }
-      } else {
+        };
+
+        socket.onerror = () => {
+          socket.close();
+        };
+
+        socket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            const type = (data.type || data.event || '').toLowerCase();
+            
+            if (type === 'like') handleLikeEvent(data.username || data.data?.username);
+            else if (type === 'gift') handleGiftEvent(data.username || data.data?.username, data.totalCoins || data.coins || data.data?.coins || 1);
+            else if (type === 'chat' || type === 'join' || type === 'novo_jogador') {
+              const u = data.username || data.data?.username;
+              if (u) addParticipant(u, data.color || data.data?.color);
+            }
+            else if (type === 'turbo') applyTurbo(cars.find(c => c.username === (data.username || data.data?.username)) || cars[0]);
+            else if (type === 'nitro') applyNitro(cars.find(c => c.username === (data.username || data.data?.username)) || cars[0]);
+            else if (type === 'oleo' || type === 'oil') applyOil(cars.find(c => c.username === (data.username || data.data?.username)) || cars[0]);
+            else if (type === 'missel' || type === 'missile') applyMissile(cars.find(c => c.username === (data.username || data.data?.username)) || cars[0]);
+            else if (type === 'escudo' || type === 'shield') applyShield(cars.find(c => c.username === (data.username || data.data?.username)) || cars[0]);
+            else if (type === 'bomba' || type === 'bomb') applyBomb(cars.find(c => c.username === (data.username || data.data?.username)) || cars[0]);
+            else if (type === 'reset') resetRace();
+          } catch (e) {}
+        };
+      } catch (e) {
         setOnline(false);
         reconnectTimer = setTimeout(initConnection, 5000);
       }
