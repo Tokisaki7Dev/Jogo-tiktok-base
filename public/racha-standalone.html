@@ -435,10 +435,13 @@
     <!-- Overlay do HUD -->
     <div id="hudOverlay">
       <div class="top-section">
-        <!-- Status Superior -->
+        <!-- Barra Superior com Badge de Live e Conexão -->
         <div class="top-status-bar">
-          <div class="live-tag">
-            <span class="live-tag-dot"></span> LIVE TIKTOK @Tokisaki7_
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button id="configBtn" style="pointer-events: auto; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; width: 24px; height: 24px; border-radius: 6px; display: flex; items-center; justify-content: center; cursor: pointer; font-size: 14px;">⚙️</button>
+            <div class="live-tag">
+              <span class="live-tag-dot"></span> LIVE TIKTOK
+            </div>
           </div>
           <div class="conn-tag">
             <span class="status-dot status-offline" id="statusDot"></span>
@@ -536,7 +539,22 @@
     </div>
   </div>
 
-  <script>
+  <!-- Modal de Configuração -->
+  <div class="podium-modal" id="configModal">
+    <div class="podium-box" style="pointer-events: auto; max-width: 320px; padding: 25px 20px;">
+      <div style="font-size: 16px; font-weight: 900; color: #00ffcc; margin-bottom: 15px; text-transform: uppercase;">Configurações</div>
+      <div style="text-align: left; margin-bottom: 15px;">
+        <label style="display: block; font-size: 11px; font-weight: 800; color: #94a3b8; margin-bottom: 5px; text-transform: uppercase;">TikTok Username</label>
+        <input type="text" id="tiktokIdInput" placeholder="@username" style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(0,255,204,0.3); color: white; padding: 10px 12px; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#00ffcc'" onblur="this.style.borderColor='rgba(0,255,204,0.3)'">
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button id="saveConfigBtn" style="flex: 1; background: #00ffcc; color: #060913; border: none; padding: 10px; border-radius: 8px; font-weight: 900; cursor: pointer; font-size: 12px; text-transform: uppercase;">Salvar e Conectar</button>
+        <button id="closeConfigBtn" style="background: rgba(255,255,255,0.1); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: 800; cursor: pointer; font-size: 12px;">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
     /* ==========================================================================
        RACHA DE CARROS 2D HD (HTML5 CANVAS) - TIKTOK LIVE (@Tokisaki7_)
        Gráficos Bonitos, Animações Fluidas, 0 Bugs & FIFO Max 20
@@ -544,7 +562,8 @@
 
     const MAX_CARS = 20;
     const RACE_DURATION = 90;
-    const BACKEND_URL = 'wss://ais-dev-qgmt23tgf5vgjue5gcbgcr-704964147319.us-east1.run.app';
+    const wsUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_WS_URL) || 'ws://163.176.90.226:8080';
+    const BACKEND_URL = wsUrl;
     const LANE_COUNT = 6;
 
     const CAR_PALETTE = [
@@ -878,17 +897,59 @@
       }
     }
 
+    // ==========================================================================
+    // CONFIGURAÇÕES E PERSISTÊNCIA DO USER ID
+    // ==========================================================================
     let socket = null;
     let reconnectTimer = null;
+    const configBtn = document.getElementById('configBtn');
+    const configModal = document.getElementById('configModal');
+    const closeConfigBtn = document.getElementById('closeConfigBtn');
+    const saveConfigBtn = document.getElementById('saveConfigBtn');
+    const tiktokIdInput = document.getElementById('tiktokIdInput');
+    const liveTag = document.querySelector('.live-tag');
+
+    // Carrega ID salvo
+    let currentTikTokId = localStorage.getItem('tiktok_user_id') || '@Tokisaki7_';
+    tiktokIdInput.value = currentTikTokId;
+    updateLiveTag(currentTikTokId);
+
+    function updateLiveTag(id) {
+      if (liveTag) {
+        liveTag.innerHTML = `<span class="live-tag-dot"></span> LIVE TIKTOK ${id}`;
+      }
+    }
+
+    configBtn.onclick = () => configModal.classList.add('show');
+    closeConfigBtn.onclick = () => configModal.classList.remove('show');
+    
+    saveConfigBtn.onclick = () => {
+      const newId = tiktokIdInput.value.trim();
+      if (newId) {
+        currentTikTokId = newId.startsWith('@') ? newId : `@${newId}`;
+        localStorage.setItem('tiktok_user_id', currentTikTokId);
+        updateLiveTag(currentTikTokId);
+        configModal.classList.remove('show');
+        // Reconecta com o novo ID
+        if (socket) socket.close();
+        initConnection();
+        showToast('⚙️', `Conectando ao chat de ${currentTikTokId}...`);
+      }
+    };
 
     function initConnection() {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       
       try {
-        socket = new WebSocket(BACKEND_URL);
+        socket = new WebSocket(wsUrl);
 
         socket.onopen = () => {
           setOnline(true);
+          // Envia o ID para o backend conectar ao TikTok
+          socket.send(JSON.stringify({ 
+            type: 'set_user', 
+            username: currentTikTokId.replace('@', '') 
+          }));
         };
 
         socket.onclose = () => {
