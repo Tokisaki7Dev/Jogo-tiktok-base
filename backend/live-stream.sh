@@ -94,7 +94,7 @@ fi
 
 export DISPLAY="$DISPLAY_NUM"
 
-# 3) Chrome sem Google Translate, sem barra superior, escala 1.5x (HUD nítido 480x853 -> 720x1280)
+# 3) Chrome sem Google Translate, sem barra superior, enquadramento exato 720x1280
 echo "🎮 Abrindo jogo em $GAME_URL via $BROWSER_BIN..."
 "$BROWSER_BIN" \
   --no-sandbox \
@@ -104,7 +104,6 @@ echo "🎮 Abrindo jogo em $GAME_URL via $BROWSER_BIN..."
   --disable-features=Translate,TranslateUI,OptimizationHints \
   --lang=pt-BR \
   --accept-lang=pt-BR \
-  --force-device-scale-factor=1.5 \
   --no-first-run \
   --no-default-browser-check \
   --disable-infobars \

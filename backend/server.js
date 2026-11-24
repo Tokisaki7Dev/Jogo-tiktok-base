@@ -24,6 +24,9 @@ const WebcastEvent = tiktokLib.WebcastEvent || {};
 const PORT = Number(process.env.PORT) || 8080;
 const HOST = '0.0.0.0';
 const RAW_TIKTOK_USERNAME = (process.env.TIKTOK_USERNAME || 'tokisaki7_').trim();
+const TIKTOK_SIGN_API_KEY = (process.env.TIKTOK_SIGN_API_KEY || '').trim();
+const TIKTOK_SESSION_ID = (process.env.TIKTOK_SESSION_ID || '').trim();
+const TIKTOK_ROOM_ID = (process.env.TIKTOK_ROOM_ID || '').trim();
 
 function sanitizeUsername(name) {
   return String(name || '').trim().replace(/^@+/, '');
@@ -363,11 +366,15 @@ async function connectToTikTokLive() {
   console.log(`[TIKTOK] Tentando conectar à live de @${activeUsername}...`);
 
   try {
-    tiktokConnection = new TikTokConnectionClass(activeUsername, {
+    const connOptions = {
       processInitialData: false,
       enableExtendedGiftInfo: true,
       requestPollingIntervalMs: 1000,
-    });
+    };
+    if (TIKTOK_SIGN_API_KEY) connOptions.signApiKey = TIKTOK_SIGN_API_KEY;
+    if (TIKTOK_SESSION_ID) connOptions.sessionId = TIKTOK_SESSION_ID;
+
+    tiktokConnection = new TikTokConnectionClass(activeUsername, connOptions);
 
     const EVT_CONNECTED = ControlEvent.CONNECTED || 'connected';
     const EVT_DISCONNECTED = ControlEvent.DISCONNECTED || 'disconnected';
@@ -413,7 +420,9 @@ async function connectToTikTokLive() {
 
     // Evento: Erro interno da conexão TikTok (nunca deixa derrubar o Node.js)
     tiktokConnection.on(EVT_ERROR, (err) => {
-      console.error('[TIKTOK] Erro na conexão:', err?.info || err?.message || err);
+      const msg = err?.exception?.message || err?.message || err?.info || String(err);
+      if (String(msg).includes("isn't online")) return;
+      console.error('[TIKTOK] Erro na conexão:', msg);
     });
 
     // 1) Comentários (chat) com anti-spam de 1s por usuário
@@ -619,7 +628,7 @@ async function connectToTikTokLive() {
       }
     });
 
-    const state = await tiktokConnection.connect();
+    const state = await tiktokConnection.connect(TIKTOK_ROOM_ID || undefined);
     tiktokConnected = true;
     isConnecting = false;
     console.log(`[TIKTOK] Live conectada! Room ID: ${state?.roomId || 'ativo'}`);
@@ -627,8 +636,9 @@ async function connectToTikTokLive() {
   } catch (err) {
     tiktokConnected = false;
     isConnecting = false;
+    const reason = err?.exception?.message || err?.message || 'live offline';
     console.warn(
-      `[TIKTOK] Não foi possível conectar à live de @${activeUsername} (${err?.message || 'live offline'}). Nova tentativa em 10s...`
+      `[TIKTOK] @${activeUsername} indisponível (${reason}). Nova tentativa em 10s...`
     );
     wss.clients.forEach(sendStatusToClient);
     scheduleReconnect();
