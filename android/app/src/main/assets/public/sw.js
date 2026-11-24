@@ -81,7 +81,7 @@ define(['./workbox-7e5eb42b'], (function (workbox) { 'use strict';
     "revision": "1872c500de691dce40960bb85481de07"
   }, {
     "url": "racha-standalone.html",
-    "revision": "6336ac3775a97cd7500de2659b0fbd86"
+    "revision": "e9a0c9dc33b4b6b3c6240da5a8633b5b"
   }, {
     "url": "pwa-maskable-512x512.png",
     "revision": "c09558b2dee51a967f7cdad1637adf45"
@@ -93,7 +93,7 @@ define(['./workbox-7e5eb42b'], (function (workbox) { 'use strict';
     "revision": "20f1b41f8af6c2e1028a40c400257358"
   }, {
     "url": "index.html",
-    "revision": "17c753c5c644053bfeaca2276479a0b4"
+    "revision": "57ec2aea677efc465be9ee257ed03bcd"
   }, {
     "url": "icon.svg",
     "revision": "7d186fa94db83721418717455e03367e"
@@ -101,7 +101,13 @@ define(['./workbox-7e5eb42b'], (function (workbox) { 'use strict';
     "url": "apple-touch-icon.png",
     "revision": "ea64058db84d9831447e836acc2e8057"
   }, {
-    "url": "assets/index-PFxDJKM1.js",
+    "url": "assets/index-uSD2FxMB.js",
+    "revision": null
+  }, {
+    "url": "assets/aistudio/IMG_4904_eb08da1e.png",
+    "revision": null
+  }, {
+    "url": "assets/aistudio/IMG_4903_44f30876.png",
     "revision": null
   }, {
     "url": "assets/aistudio/IMG_4902_fbe548ef.png",

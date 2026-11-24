@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="notranslate" translate="no">
 <head>
   <meta charset="UTF-8" />
+  <meta name="google" content="notranslate" />
   <title>Racha Live - TikTok Racing</title>
 
   <!-- Android / Capacitor / PWA Tela Cheia Vertical -->
@@ -42,7 +43,7 @@
       align-items: center;
     }
 
-    /* Container Principal 100dvh / 100vw tela cheia vertical para Android Live */
+    /* Container Principal 100dvh / 100vw tela cheia vertical para Android Live & VPS */
     #gameContainer {
       position: relative;
       width: 100vw;
@@ -53,6 +54,16 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
+    }
+
+    @media (max-aspect-ratio: 1/1) {
+      #gameContainer {
+        max-width: 100vw;
+      }
+    }
+
+    html.hide-cursor, html.hide-cursor * {
+      cursor: none !important;
     }
 
     /* Canvas 2D Retina Display */
@@ -1686,6 +1697,9 @@
     let tiktokConnected = false;
 
     const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('nocursor') === '1' || window.location.pathname.startsWith('/live')) {
+      document.documentElement.classList.add('hide-cursor');
+    }
     const queryWsUrl = urlParams.get('ws');
     const sameOriginWsUrl = window.location.pathname.startsWith('/live')
       ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`

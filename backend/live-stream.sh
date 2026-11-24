@@ -9,7 +9,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Carrega variáveis do .env
 if [ -f ".env" ]; then
   set -a
   # shellcheck disable=SC1091
@@ -20,7 +19,7 @@ fi
 PORT="${PORT:-8080}"
 RTMP_URL="${RTMP_URL:-rtmp://live.restream.io/live}"
 RTMP_STREAM_KEY="${RTMP_STREAM_KEY:-}"
-GAME_URL="http://127.0.0.1:${PORT}/live?ws=ws://127.0.0.1:${PORT}"
+GAME_URL="http://127.0.0.1:${PORT}/live?ws=ws://127.0.0.1:${PORT}&nocursor=1"
 
 if [ -z "$RTMP_STREAM_KEY" ] || [ "$RTMP_STREAM_KEY" = "COLE_SUA_STREAM_KEY_AQUI" ]; then
   echo "❌ Defina RTMP_STREAM_KEY no arquivo backend/.env antes de iniciar."
@@ -31,12 +30,10 @@ RTMP_TARGET="${RTMP_URL%/}/${RTMP_STREAM_KEY}"
 DISPLAY_NUM=":99"
 BROWSER_PROFILE="/tmp/racha-live-chrome-profile"
 
-# Garante XDG_RUNTIME_DIR válido (necessário ao rodar PulseAudio como root na VPS)
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/runtime-racha-live}"
 mkdir -p "$XDG_RUNTIME_DIR"
 chmod 700 "$XDG_RUNTIME_DIR"
 
-# Detecta Google Chrome ou Chromium instalado
 BROWSER_BIN=""
 for bin in google-chrome google-chrome-stable chromium chromium-browser; do
   if command -v "$bin" >/dev/null 2>&1; then
@@ -56,16 +53,19 @@ if ! command -v Xvfb >/dev/null 2>&1 || ! command -v ffmpeg >/dev/null 2>&1; the
 fi
 
 cleanup() {
+  trap - EXIT INT TERM
   echo "🛑 Encerrando stream da VPS..."
   kill "${BROWSER_PID:-}" "${XVFB_PID:-}" 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 
-# Limpa travas antigas do Xvfb caso o processo anterior tenha caído
+pkill -f "Xvfb ${DISPLAY_NUM}" 2>/dev/null || true
+pkill -f "$BROWSER_PROFILE" 2>/dev/null || true
+sleep 0.5
 rm -f "/tmp/.X99-lock" "/tmp/.X11-unix/X99" 2>/dev/null || true
 rm -rf "$BROWSER_PROFILE"
 
-# 1) Áudio virtual (PulseAudio null sink) para capturar efeitos sonoros + locutor IA
+# 1) Áudio virtual (PulseAudio null sink)
 AUDIO_ARGS=(-f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100)
 if command -v pulseaudio >/dev/null 2>&1 && command -v pactl >/dev/null 2>&1; then
   pulseaudio --check 2>/dev/null || pulseaudio -D --exit-idle-time=-1 --disallow-exit >/tmp/pulse.log 2>&1 || true
@@ -80,21 +80,31 @@ if command -v pulseaudio >/dev/null 2>&1 && command -v pactl >/dev/null 2>&1; th
   fi
 fi
 
-# 2) Tela virtual vertical 720x1280 (ideal para 2 vCPUs sem GPU)
+# 2) Tela virtual vertical 720x1280 sem cursor (-nocursor) e sem reset (-noreset)
 echo "🖥️ Iniciando display virtual ${DISPLAY_NUM} (720x1280)..."
-Xvfb "$DISPLAY_NUM" -screen 0 720x1280x24 -ac +extension RANDR >/tmp/xvfb.log 2>&1 &
+Xvfb "$DISPLAY_NUM" -screen 0 720x1280x24 -ac -noreset -nocursor -nolisten tcp >/tmp/xvfb.log 2>&1 &
 XVFB_PID=$!
 sleep 2
 
+if ! kill -0 "$XVFB_PID" 2>/dev/null; then
+  echo "❌ Falha ao iniciar Xvfb. Log:"
+  cat /tmp/xvfb.log || true
+  exit 1
+fi
+
 export DISPLAY="$DISPLAY_NUM"
 
-# 3) Abre o jogo em tela cheia dentro do display virtual
+# 3) Chrome sem Google Translate, sem barra superior, escala 1.5x (HUD nítido 480x853 -> 720x1280)
 echo "🎮 Abrindo jogo em $GAME_URL via $BROWSER_BIN..."
 "$BROWSER_BIN" \
   --no-sandbox \
   --disable-dev-shm-usage \
   --disable-gpu \
   --autoplay-policy=no-user-gesture-required \
+  --disable-features=Translate,TranslateUI,OptimizationHints \
+  --lang=pt-BR \
+  --accept-lang=pt-BR \
+  --force-device-scale-factor=1.5 \
   --no-first-run \
   --no-default-browser-check \
   --disable-infobars \
@@ -106,12 +116,18 @@ echo "🎮 Abrindo jogo em $GAME_URL via $BROWSER_BIN..."
   >/tmp/chrome-live.log 2>&1 &
 BROWSER_PID=$!
 
-# Aguarda o canvas e o WebSocket estabilizarem antes de iniciar o RTMP
 sleep 5
+if ! kill -0 "$BROWSER_PID" 2>/dev/null; then
+  echo "❌ Chrome fechou inesperadamente. Log:"
+  cat /tmp/chrome-live.log || true
+  exit 1
+fi
 
+# 4) Captura X11 limpa (sem cursor: -draw_mouse 0)
 echo "📡 Transmitindo 720x1280 @ 30fps para ${RTMP_URL}/*** ..."
 ffmpeg -hide_banner -loglevel warning \
-  -thread_queue_size 512 -f x11grab -video_size 720x1280 -framerate 30 -i "${DISPLAY_NUM}.0" \
+  -probesize 32M -draw_mouse 0 -thread_queue_size 512 \
+  -f x11grab -video_size 720x1280 -framerate 30 -i "${DISPLAY_NUM}.0" \
   "${AUDIO_ARGS[@]}" \
   -c:v libx264 -preset ultrafast -tune zerolatency \
   -b:v 2200k -maxrate 2400k -bufsize 4400k \
