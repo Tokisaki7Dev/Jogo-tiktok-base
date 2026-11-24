@@ -1,0 +1,20 @@
+{
+  "name": "tiktok-live-race-backend",
+  "version": "1.0.0",
+  "description": "Backend Node.js com Express, WebSocket (ws) e tiktok-live-connector para integrar eventos da live do TikTok ao jogo em tempo real.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "tiktok-live-connector": "^2.1.0",
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
