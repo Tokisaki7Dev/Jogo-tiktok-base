@@ -17,6 +17,8 @@ const tiktokLib = require('tiktok-live-connector');
 // quanto para v1.x (WebcastPushConnection)
 const TikTokConnectionClass =
   tiktokLib.TikTokLiveConnection || tiktokLib.WebcastPushConnection;
+const ControlEvent = tiktokLib.ControlEvent || {};
+const WebcastEvent = tiktokLib.WebcastEvent || {};
 
 // Configurações vindas exclusivamente das variáveis de ambiente
 const PORT = Number(process.env.PORT) || 8080;
@@ -267,15 +269,21 @@ function extractUserData(data) {
   const userObj = data?.user || data || {};
   const username =
     userObj.uniqueId ||
+    userObj.displayId ||
     userObj.nickname ||
     data?.uniqueId ||
+    data?.displayId ||
     data?.nickname ||
     'espectador';
 
   const avatar =
+    userObj.profilePicture?.urls?.[0] ||
+    userObj.profilePicture?.url?.[0] ||
     userObj.profilePictureUrl ||
+    data?.profilePicture?.urls?.[0] ||
     data?.profilePictureUrl ||
     userObj.avatarThumb?.urlList?.[0] ||
+    userObj.avatarThumb?.url?.[0] ||
     userObj.avatarMedium?.urlList?.[0] ||
     '';
 
@@ -361,8 +369,21 @@ async function connectToTikTokLive() {
       requestPollingIntervalMs: 1000,
     });
 
+    const EVT_CONNECTED = ControlEvent.CONNECTED || 'connected';
+    const EVT_DISCONNECTED = ControlEvent.DISCONNECTED || 'disconnected';
+    const EVT_STREAM_END = ControlEvent.STREAM_END || 'streamEnd';
+    const EVT_ERROR = ControlEvent.ERROR || 'error';
+    const EVT_CHAT = WebcastEvent.CHAT || 'chat';
+    const EVT_GIFT = WebcastEvent.GIFT || 'gift';
+    const EVT_LIKE = WebcastEvent.LIKE || 'like';
+    const EVT_FOLLOW = WebcastEvent.FOLLOW || 'follow';
+    const EVT_SHARE = WebcastEvent.SHARE || 'share';
+    const EVT_SOCIAL = WebcastEvent.SOCIAL || 'social';
+    const EVT_MEMBER = WebcastEvent.MEMBER || 'member';
+    const EVT_ROOM_USER = WebcastEvent.ROOM_USER || 'roomUser';
+
     // Evento: Conectado à sala da live
-    tiktokConnection.on('connected', (state) => {
+    tiktokConnection.on(EVT_CONNECTED, (state) => {
       tiktokConnected = true;
       isConnecting = false;
       console.log(`[TIKTOK] Conectado à live de @${activeUsername} (roomId: ${state?.roomId || '?'})`);
@@ -370,7 +391,7 @@ async function connectToTikTokLive() {
     });
 
     // Evento: Desconectado da live -> agenda reconexão em 10s
-    tiktokConnection.on('disconnected', () => {
+    tiktokConnection.on(EVT_DISCONNECTED, () => {
       const wasConnected = tiktokConnected;
       tiktokConnected = false;
       isConnecting = false;
@@ -382,7 +403,7 @@ async function connectToTikTokLive() {
     });
 
     // Evento: Live encerrada pelo streamer -> agenda reconexão em 10s
-    tiktokConnection.on('streamEnd', () => {
+    tiktokConnection.on(EVT_STREAM_END, () => {
       tiktokConnected = false;
       isConnecting = false;
       console.warn('[TIKTOK] A live foi encerrada. Tentando novamente em 10 segundos...');
@@ -391,15 +412,15 @@ async function connectToTikTokLive() {
     });
 
     // Evento: Erro interno da conexão TikTok (nunca deixa derrubar o Node.js)
-    tiktokConnection.on('error', (err) => {
-      console.error('[TIKTOK] Erro na conexão:', err?.message || err);
+    tiktokConnection.on(EVT_ERROR, (err) => {
+      console.error('[TIKTOK] Erro na conexão:', err?.info || err?.message || err);
     });
 
     // 1) Comentários (chat) com anti-spam de 1s por usuário
-    tiktokConnection.on('chat', (data) => {
+    tiktokConnection.on(EVT_CHAT, (data) => {
       try {
         const { user, avatar } = extractUserData(data);
-        const text = String(data?.comment || '').trim();
+        const text = String(data?.comment || data?.content || data?.text || '').trim();
         if (!text) return;
 
         // Anti-spam: 1 comando por usuário a cada 1 segundo
@@ -425,7 +446,7 @@ async function connectToTikTokLive() {
     });
 
     // 2) Presentes (gift) - trata combos contínuos (streak) sem duplicar
-    tiktokConnection.on('gift', (data) => {
+    tiktokConnection.on(EVT_GIFT, (data) => {
       try {
         // Em presentes repetíveis (giftType === 1), aguarda o fim do combo ou envia apenas ao finalizar
         if (data?.giftType === 1 && !data?.repeatEnd) {
@@ -433,9 +454,18 @@ async function connectToTikTokLive() {
         }
 
         const { user, avatar } = extractUserData(data);
-        const giftName = data?.giftName || data?.extendedGiftInfo?.name || 'Presente';
+        const giftName =
+          data?.giftDetails?.giftName ||
+          data?.giftName ||
+          data?.extendedGiftInfo?.name ||
+          'Presente';
         const giftCount = Number(data?.repeatCount) || 1;
-        const unitDiamonds = Number(data?.diamondCount ?? data?.extendedGiftInfo?.diamond_count) || 1;
+        const unitDiamonds =
+          Number(
+            data?.giftDetails?.diamondCount ??
+              data?.diamondCount ??
+              data?.extendedGiftInfo?.diamond_count
+          ) || 1;
         const totalDiamonds = unitDiamonds * giftCount;
 
         const payload = buildPayload({
@@ -456,7 +486,7 @@ async function connectToTikTokLive() {
     });
 
     // 3) Curtidas (like)
-    tiktokConnection.on('like', (data) => {
+    tiktokConnection.on(EVT_LIKE, (data) => {
       try {
         const { user, avatar } = extractUserData(data);
         const likeCount = Number(data?.likeCount) || 1;
@@ -478,7 +508,7 @@ async function connectToTikTokLive() {
     });
 
     // 4) Novos seguidores (follow)
-    tiktokConnection.on('follow', (data) => {
+    tiktokConnection.on(EVT_FOLLOW, (data) => {
       try {
         const { user, avatar } = extractUserData(data);
 
@@ -500,7 +530,7 @@ async function connectToTikTokLive() {
     });
 
     // 5) Compartilhamentos (share)
-    tiktokConnection.on('share', (data) => {
+    tiktokConnection.on(EVT_SHARE, (data) => {
       try {
         const { user, avatar } = extractUserData(data);
 
@@ -521,8 +551,35 @@ async function connectToTikTokLive() {
       }
     });
 
+    // 5b) Eventos sociais unificados no v2 (follow / share via WebcastEvent.SOCIAL)
+    if (EVT_SOCIAL !== EVT_FOLLOW && EVT_SOCIAL !== EVT_SHARE) {
+      tiktokConnection.on(EVT_SOCIAL, (data) => {
+        try {
+          const { user, avatar } = extractUserData(data);
+          const displayType = String(data?.common?.displayText?.key || data?.displayType || '').toLowerCase();
+          const isShare = displayType.includes('share') || Number(data?.action) === 3;
+          const isFollow = displayType.includes('follow') || Number(data?.action) === 1;
+          if (!isShare && !isFollow) return;
+
+          const type = isShare ? 'share' : 'follow';
+          const payload = buildPayload({
+            type,
+            user,
+            avatar,
+            text: isShare ? 'Compartilhou a live!' : 'Seguiu a live!',
+            giftName: '',
+            giftCount: 1,
+            diamonds: 0,
+          });
+          broadcastEvent(payload);
+        } catch (err) {
+          console.error('[SOCIAL] Erro ao processar evento social:', err.message);
+        }
+      });
+    }
+
     // 6) Entrada de novos espectadores na sala (member -> type: "join")
-    tiktokConnection.on('member', (data) => {
+    tiktokConnection.on(EVT_MEMBER, (data) => {
       try {
         const { user, avatar } = extractUserData(data);
 
@@ -543,7 +600,7 @@ async function connectToTikTokLive() {
     });
 
     // 7) Contagem de espectadores ao vivo (roomUser)
-    tiktokConnection.on('roomUser', (data) => {
+    tiktokConnection.on(EVT_ROOM_USER, (data) => {
       try {
         const count = Number(data?.viewerCount) || 0;
         currentViewerCount = count;

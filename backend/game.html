@@ -89,6 +89,19 @@
       padding: max(env(safe-area-inset-top, 8px), 8px) max(env(safe-area-inset-right, 8px), 8px) max(env(safe-area-inset-bottom, 8px), 8px) max(env(safe-area-inset-left, 8px), 8px);
     }
 
+    /* Zona segura exclusiva da live RTMP (evita cabeçalho superior e chat inferior do TikTok) */
+    body.tiktok-safe #hudOverlay {
+      padding: 68px 8px 185px 8px;
+    }
+
+    body.tiktok-safe #configBtn {
+      display: none;
+    }
+
+    body.tiktok-safe .top-section {
+      gap: 3px;
+    }
+
     .top-section {
       display: flex;
       flex-direction: column;
@@ -1276,6 +1289,9 @@
       const lane = idx % LANE_COUNT;
       const startX = getLaneX(lane);
       const carColor = colorHex || palette.main;
+      const isLiveSafe = document.body.classList.contains('tiktok-safe');
+      const anchorY = isLiveSafe ? cssHeight * 0.50 : cssHeight * 0.60;
+      const packTailDist = cars.length > 0 ? Math.max(0, Math.min(...cars.map(c => c.distance)) - 10) : 0;
 
       const newCar = {
         id: `c_${Date.now()}_${Math.random()}`,
@@ -1289,11 +1305,11 @@
         targetLane: lane,
         laneSwitchCooldown: 1.5 + Math.random() * 3,
         x: startX,
-        y: cssHeight ? cssHeight + 40 : 600,
-        distance: 0,
+        y: anchorY + 45,
+        distance: packTailDist,
         diamonds: 0,
-        speed: 175 + Math.random() * 20,
-        baseSpeed: 175 + Math.random() * 22,
+        speed: 195 + Math.random() * 20,
+        baseSpeed: 180 + Math.random() * 22,
         rank: idx + 1,
         turboTimer: 0,
         nitroTimer: 0,
@@ -1301,7 +1317,7 @@
         stunTimer: 0,
         shieldTimer: 0,
         jumpTimer: 0,
-        boostPulse: 0,
+        boostPulse: 0.8,
         spinAngle: 0,
         driftAngle: 0,
         badgeOffset: 0
@@ -1313,10 +1329,16 @@
       return newCar;
     }
 
+    const isInitialLiveSafe = window.location.pathname.startsWith('/live') || new URLSearchParams(window.location.search).get('tiktok') === '1';
+    if (isInitialLiveSafe) {
+      document.body.classList.add('tiktok-safe');
+    }
+
     INITIAL_DRIVERS.forEach((driver, i) => {
       const car = addParticipant(driver);
       if (car) {
-        car.y = (cssHeight * 0.68) + (i % 3) * 28;
+        const baseAnchor = isInitialLiveSafe ? cssHeight * 0.50 : cssHeight * 0.60;
+        car.y = baseAnchor + (i % 3) * 18;
       }
     });
 
@@ -1678,6 +1700,11 @@
         showActionSpotlight(cleanUser, avatar, '✨ Ativou !poder');
       } else if (['curtir', 'empurrar', 'boost'].includes(cmd)) {
         handleLikeEvent(cleanUser, avatar, 1);
+      } else {
+        car.turboTimer = Math.max(car.turboTimer, 1.2);
+        showActionSpotlight(cleanUser, avatar, `💬 ${String(rawText || 'Entrou na pista!').slice(0, 28)}`);
+        showToast('🏎️', `${cleanUser} entrou!`, avatar);
+        floatingTexts.push({ x: car.x, y: car.y - 34, text: '🏎️ NA PISTA!', color: '#00ffcc', alpha: 1, vy: -32 });
       }
     }
 
@@ -1699,6 +1726,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('nocursor') === '1' || window.location.pathname.startsWith('/live')) {
       document.documentElement.classList.add('hide-cursor');
+      document.body.classList.add('tiktok-safe');
     }
     const queryWsUrl = urlParams.get('ws');
     const sameOriginWsUrl = window.location.pathname.startsWith('/live')
@@ -2180,7 +2208,8 @@
         c.lane = idx % LANE_COUNT;
         c.targetLane = c.lane;
         c.x = getLaneX(c.lane);
-        c.y = cssHeight * 0.68 + Math.floor(idx / LANE_COUNT) * 26;
+        const baseAnchor = document.body.classList.contains('tiktok-safe') ? cssHeight * 0.50 : cssHeight * 0.60;
+        c.y = baseAnchor + Math.floor(idx / LANE_COUNT) * 18;
       });
 
       particles = [];
@@ -2338,8 +2367,12 @@
         car.x += diffX * Math.min(1, dt * 7.5);
         car.driftAngle = Math.max(-0.28, Math.min(0.28, diffX * 0.015));
 
-        const targetY = (cssHeight * 0.67) - (car.distance - maxDist) * 4.2;
-        const clampedY = Math.max(255, Math.min(cssHeight - 82, targetY));
+        const isLiveSafe = document.body.classList.contains('tiktok-safe');
+        const anchorY = isLiveSafe ? cssHeight * 0.50 : cssHeight * 0.60;
+        const minTrackY = Math.max(255, cssHeight * (isLiveSafe ? 0.40 : 0.36));
+        const maxTrackY = isLiveSafe ? cssHeight * 0.66 : cssHeight - 95;
+        const targetY = anchorY - (car.distance - maxDist) * 2.8;
+        const clampedY = Math.max(minTrackY, Math.min(maxTrackY, targetY));
         car.y += (clampedY - car.y) * Math.min(1, dt * 8);
 
         if (car.turboTimer > 0 || car.nitroTimer > 0) {
